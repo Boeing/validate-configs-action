@@ -55,7 +55,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: kehoe/validate-configs-action@v4.0.1
+      - uses: Boeing/validate-configs-action@v1.0.0
 ```
 
 ### Custom search path
@@ -65,7 +65,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: kehoe/validate-configs-action@v4.0.1
+      - uses: Boeing/validate-configs-action@v1.0.0
         with:
             search-path: ./project/configs
 ```
@@ -77,7 +77,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: kehoe/validate-configs-action@v4.0.1
+      - uses: Boeing/validate-configs-action@v1.0.0
         with:
             search-path: ./project/configs ./project/devops
 ```
@@ -89,7 +89,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: kehoe/validate-configs-action@v4.0.1
+      - uses: Boeing/validate-configs-action@v1.0.0
         with:
             exclude-dirs: "tests,vendor"
 ```
@@ -101,7 +101,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: kehoe/validate-configs-action@v4.0.1
+      - uses: Boeing/validate-configs-action@v1.0.0
         with:
             exclude-file-types: "json,xml"
 ```
@@ -113,7 +113,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: kehoe/validate-configs-action@v4.0.1
+      - uses: Boeing/validate-configs-action@v1.0.0
         with:
             depth: 0
 ```
@@ -125,7 +125,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: kehoe/validate-configs-action@v4.0.1
+      - uses: Boeing/validate-configs-action@v1.0.0
         with:
             reporter: "json"
 ```
@@ -137,7 +137,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: kehoe/validate-configs-action@v4.0.1
+      - uses: Boeing/validate-configs-action@v1.0.0
         with:
             group-by: "pass-fail"
 ```

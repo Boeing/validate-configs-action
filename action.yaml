@@ -1,6 +1,6 @@
 ---
 name: 'Validate Config Files Action'
-author: 'kehoecj'
+author: 'Boeing'
 description: 'Github Action to validate config files in a repo using the config-file-validator tool'
 
 inputs:

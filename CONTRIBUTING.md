@@ -17,5 +17,5 @@ Pull requests are the best way to propose changes to the codebase (we use [GitHu
 3. Ensure the test suite passes.
 4. Submit that pull request!
 
-## Report bugs using GitHub's [issues](https://github.com/kehoecj/validate-configs-action/issues)
+## Report bugs using GitHub's [issues](https://github.com/Boeing/validate-configs-action/issues)
 We use GitHub issues to track public bugs. Report a bug by [opening a new issue](https://github.com/kehoecj/validate-configs-action/issues/new);
