@@ -1,0 +1,45 @@
+---
+name: 'Validate Config Files Action'
+author: 'kehoecj'
+description: 'Github Action to validate config files in a repo using the config-file-validator tool'
+
+inputs:
+  search-paths:
+    description: 'A space separated list of directories or files to scan'
+    required: false
+    default: '.'
+  exclude-dirs:
+    description: 'A comman separated list of directories to exclude in the search path. Example: "subdir1,subdir2"'
+    required: false
+    default: ""
+  exclude-file-types:
+    description: 'A comman separated list of file types to exclude. Example: "csv,json"'
+    required: false
+    default: ""
+  depth:
+    description: 'An integer value limiting the depth of recursion for the search paths. For example, setting depth to 0 would disable recursion'
+    required: false
+    default: ""
+  reporter:
+    description: 'Format of the printed report. Options are standard and json (default "standard")'
+    required: false
+    default: "standard"
+  group-by:
+    description: A comman separated list of how to group the output. Options are file type, directory, or pass-fail.
+    required: false
+    default: ""
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.search-paths }}
+    - ${{ inputs.exclude-dirs }}
+    - ${{ inputs.exclude-file-types }}
+    - ${{ inputs.depth }}
+    - ${{ inputs.reporter }}
+    - ${{ inputs.group-by }}
+
+branding:
+  color: 'blue'
+  icon: 'code'
