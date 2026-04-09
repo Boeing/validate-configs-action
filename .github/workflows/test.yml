@@ -126,6 +126,14 @@ jobs:
         with:
           search-paths: test/good.json test/good.yaml test/pr-bad.json
           reporter: "sarif:validation-results.sarif,standard"
+      - name: Debug - check for SARIF file
+        if: always()
+        run: |
+          echo "PWD: $(pwd)"
+          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+          ls -la validation-results.sarif 2>&1 || echo "NOT FOUND in pwd"
+          ls -la $GITHUB_WORKSPACE/validation-results.sarif 2>&1 || echo "NOT FOUND in GITHUB_WORKSPACE"
+          find / -name 'validation-results.sarif' 2>/dev/null || echo "NOT FOUND anywhere"
       - name: Fix SARIF artifact URIs
         if: always()
         run: |
