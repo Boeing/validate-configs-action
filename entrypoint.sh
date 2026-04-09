@@ -91,6 +91,12 @@ if [ -f "$ANNOTATIONS_JSON" ]; then
       if (match(error_msg, /line [0-9]+/)) {
         line = substr(error_msg, RSTART+5, RLENGTH-5)
       }
+      if (match(error_msg, /\(string\):[0-9]+:/) && line == "") {
+        tmp = error_msg
+        sub(/.*\(string\):/, "", tmp)
+        sub(/:.*/, "", tmp)
+        line = tmp
+      }
       if (match(error_msg, /column [0-9]+/)) {
         col = substr(error_msg, RSTART+7, RLENGTH-7)
       }
