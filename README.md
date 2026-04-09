@@ -283,7 +283,3 @@ jobs:
             sarif_file: validation-results.sarif
 ```
 
-Key points:
-- `reporter: "sarif:validation-results.sarif,standard"` produces both a SARIF file for upload and standard console output
-- `if: always()` ensures the SARIF upload runs even when validation fails (exit code 1)
-- `security-events: write` permission is required for the upload step
