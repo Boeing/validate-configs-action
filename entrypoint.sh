@@ -80,6 +80,7 @@ if [ -f "$ANNOTATIONS_JSON" ]; then
       # Strip /github/workspace/ prefix to get repo-relative path
       sub(/^\/github\/workspace\//, "");
       path = $0
+      failed = 0
     }
     /"status": *"failed"/ { failed = 1 }
     /"status": *"passed"/ { failed = 0 }
