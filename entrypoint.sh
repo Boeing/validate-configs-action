@@ -87,24 +87,33 @@ if [ -f "$ANNOTATIONS_JSON" ]; then
     in_errors && /"/ {
       gsub(/^ *"/, ""); gsub(/"[,]?$/, "");
       error_msg = $0
-      line = ""; col = ""
-      if (match(error_msg, /line [0-9]+/)) {
-        line = substr(error_msg, RSTART+5, RLENGTH-5)
+      title = "Validation Error"
+      clean_msg = error_msg
+      if (match(error_msg, /^schema: /)) {
+        title = "Schema Error"
+        clean_msg = substr(error_msg, 9)
+      } else if (match(error_msg, /^syntax: /)) {
+        title = "Syntax Error"
+        clean_msg = substr(error_msg, 9)
       }
-      if (match(error_msg, /\(string\):[0-9]+:/) && line == "") {
-        tmp = error_msg
+      line = ""; col = ""
+      if (match(clean_msg, /line [0-9]+/)) {
+        line = substr(clean_msg, RSTART+5, RLENGTH-5)
+      }
+      if (match(clean_msg, /\(string\):[0-9]+:/) && line == "") {
+        tmp = clean_msg
         sub(/.*\(string\):/, "", tmp)
         sub(/:.*/, "", tmp)
         line = tmp
       }
-      if (match(error_msg, /column [0-9]+/)) {
-        col = substr(error_msg, RSTART+7, RLENGTH-7)
+      if (match(clean_msg, /column [0-9]+/)) {
+        col = substr(clean_msg, RSTART+7, RLENGTH-7)
       }
-      annotation = "::error file=" path
+      annotation = "::error file=" path ",title=" title
       if (line != "") annotation = annotation ",line=" line
       else annotation = annotation ",line=1"
       if (col != "") annotation = annotation ",col=" col
-      annotation = annotation "::" error_msg
+      annotation = annotation "::" clean_msg
       print annotation
     }
   ' "$ANNOTATIONS_JSON"
