@@ -114,9 +114,19 @@ if [ -f "$ANNOTATIONS_JSON" ]; then
       }
       for (i = 0; i < gcount; i++) {
         split(gkeys[i], parts, "|")
+        msg = gmsg[i]
+        # Count errors and format with bullets if multiple
+        n = split(msg, items, "%0A")
+        if (n > 1) {
+          formatted = n " " tolower(parts[3]) "s found:"
+          for (j = 1; j <= n; j++) {
+            formatted = formatted "%0A• " items[j]
+          }
+          msg = formatted
+        }
         annotation = "::error file=" path ",title=" parts[3] ",line=" parts[1]
         if (parts[2] != "") annotation = annotation ",col=" parts[2]
-        annotation = annotation "::" gmsg[i]
+        annotation = annotation "::" msg
         print annotation
       }
       delete err_line; delete err_col; delete err_title; delete err_msg
