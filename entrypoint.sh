@@ -96,6 +96,7 @@ if [ -f "$ANNOTATIONS_JSON" ]; then
       }
       annotation = "::error file=" path
       if (line != "") annotation = annotation ",line=" line
+      else annotation = annotation ",line=1"
       if (col != "") annotation = annotation ",col=" col
       annotation = annotation "::" error_msg
       print annotation
