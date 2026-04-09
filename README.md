@@ -30,6 +30,10 @@ Each file will get validated for the correct syntax and the results collected in
 
 Files that declare a schema (JSON Schema for JSON/YAML/TOML/TOON, XSD for XML) are automatically validated against it.
 
+## PR inline annotations
+
+Validation errors automatically appear as inline annotations on pull request diffs. When a config file fails validation, the action emits GitHub Actions workflow commands that annotate the exact file and line where the error occurred. For config types that do not support line numbers in the error output, an annotation will be added at line 1.
+
 ## Inputs
 
 | Input              | Required | Default Value | Description |
@@ -260,26 +264,3 @@ jobs:
         with:
             schema-map: "**/package.json:schemas/package.schema.json,**/config.xml:schemas/config.xsd"
 ```
-
-### PR inline annotations via GitHub code scanning
-
-You can get inline annotations on pull request diffs (like golangci-lint, Scorecard, etc.) by outputting a SARIF report and uploading it with `github/codeql-action/upload-sarif`. This uses GitHub's code scanning infrastructure to annotate the exact files and lines with validation errors.
-
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Boeing/validate-configs-action@v2.0.0
-        with:
-            reporter: "sarif:validation-results.sarif,standard"
-      - name: Upload SARIF to code scanning
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-            sarif_file: validation-results.sarif
-```
-

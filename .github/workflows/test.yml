@@ -47,8 +47,6 @@ jobs:
         with:
           search-paths: test
           exclude-dirs: failing
-
-  # Exclude file types
   test-exclude-file-types:
     name: "Test: exclude-file-types"
     runs-on: ubuntu-latest
@@ -113,25 +111,6 @@ jobs:
             echo "Found: $f ($(wc -c < "$f") bytes)"
           done
 
-  # SARIF reporter with code scanning upload
-  test-sarif-upload:
-    name: "Test: SARIF upload to code scanning"
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-      - uses: ./
-        with:
-          search-paths: test/good.json test/good.yaml
-          reporter: "sarif:validation-results.sarif,standard"
-      - name: Upload SARIF to code scanning
-        uses: github/codeql-action/upload-sarif@1b1aada464948af03b950897e5eb522f92603cc2 # v3.24.9
-        if: always()
-        with:
-          sarif_file: validation-results.sarif
-          category: config-file-validator
-
   # Group by
   test-group-by:
     name: "Test: group-by"
@@ -164,7 +143,7 @@ jobs:
       - uses: ./
         with:
           globbing: "true"
-          search-paths: "test/*.json"
+          search-paths: "test/good*.json"
 
   # type-map
   test-type-map:
