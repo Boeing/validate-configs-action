@@ -184,8 +184,8 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - uses: ./
         with:
-          search-paths: test/good.json
-          schema-map: "**/good.json:test/schemas/test.schema.json"
+          search-paths: test/with-schema.json
+          schema-map: "**/with-schema.json:test/schemas/test.schema.json"
 
   # Inline schema validation
   test-schema-inline:
