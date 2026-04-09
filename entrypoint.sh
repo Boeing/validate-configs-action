@@ -7,11 +7,6 @@
 
 set -e
 
-# GitHub mounts the workspace at /github/workspace but Docker containers
-# don't automatically cd there. We need to be in the workspace so that
-# reporter output files (e.g. SARIF) are written where the runner can find them.
-cd "${GITHUB_WORKSPACE:-.}"
-
 SEARCH_PATHS=$1
 EXCLUDE_DIRS=$2
 EXCLUDE_FILE_TYPES=$3

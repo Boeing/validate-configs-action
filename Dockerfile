@@ -9,4 +9,5 @@ RUN apk --no-cache add curl tar && \
   rm -rf /tmp/* && \
   chmod 0755 /usr/local/bin/validator && \
   chmod 0755 /entrypoint.sh
+WORKDIR /github/workspace
 ENTRYPOINT ["/entrypoint.sh"]
