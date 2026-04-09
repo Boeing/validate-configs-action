@@ -85,6 +85,7 @@ EXIT_CODE=$?
 set -e
 
 # Parse JSON output and emit GitHub Actions annotations for failures
+# Groups multiple errors on the same file+line+type into a single annotation
 if [ -f "$ANNOTATIONS_JSON" ]; then
   awk '
     /"path":/ {
@@ -95,8 +96,33 @@ if [ -f "$ANNOTATIONS_JSON" ]; then
     }
     /"status": *"failed"/ { failed = 1 }
     /"status": *"passed"/ { failed = 0 }
-    /"errors":/ && failed { in_errors = 1; next }
-    in_errors && /\]/ { in_errors = 0; next }
+    /"errors":/ && failed { in_errors = 1; err_count = 0; next }
+    in_errors && /\]/ {
+      in_errors = 0
+      # Group errors by line+col+title, emit one annotation per group
+      delete seen; delete gkeys; gcount = 0
+      for (i = 0; i < err_count; i++) {
+        key = err_line[i] "|" err_col[i] "|" err_title[i]
+        if (!(key in seen)) {
+          seen[key] = gcount
+          gkeys[gcount] = key
+          gmsg[gcount] = err_msg[i]
+          gcount++
+        } else {
+          gmsg[seen[key]] = gmsg[seen[key]] "%0A" err_msg[i]
+        }
+      }
+      for (i = 0; i < gcount; i++) {
+        split(gkeys[i], parts, "|")
+        annotation = "::error file=" path ",title=" parts[3] ",line=" parts[1]
+        if (parts[2] != "") annotation = annotation ",col=" parts[2]
+        annotation = annotation "::" gmsg[i]
+        print annotation
+      }
+      delete err_line; delete err_col; delete err_title; delete err_msg
+      delete gmsg
+      next
+    }
     in_errors && /"/ {
       gsub(/^ *"/, ""); gsub(/"[,]?$/, "");
       error_msg = $0
@@ -122,12 +148,12 @@ if [ -f "$ANNOTATIONS_JSON" ]; then
       if (match(clean_msg, /column [0-9]+/)) {
         col = substr(clean_msg, RSTART+7, RLENGTH-7)
       }
-      annotation = "::error file=" path ",title=" title
-      if (line != "") annotation = annotation ",line=" line
-      else annotation = annotation ",line=1"
-      if (col != "") annotation = annotation ",col=" col
-      annotation = annotation "::" clean_msg
-      print annotation
+      if (line == "") line = "1"
+      err_line[err_count] = line
+      err_col[err_count] = col
+      err_title[err_count] = title
+      err_msg[err_count] = clean_msg
+      err_count++
     }
   ' "$ANNOTATIONS_JSON"
   if [ -z "$HAS_JSON_FILE" ]; then
