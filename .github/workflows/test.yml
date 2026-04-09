@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Validate config files
-        uses: Boeing/validate-configs-action@main
+        uses: ./
         with:
           search-paths: test/good.ini test/good.json test/good.toml test/good.xml test/good.yaml
           exclude-dirs: failing
