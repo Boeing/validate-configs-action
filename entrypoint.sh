@@ -45,8 +45,21 @@ if [ -n "$REPORTER" ]; then
 fi
 
 # Always add a JSON reporter to a temp file for annotation parsing
+# unless the user already specified a json reporter with a file output
 ANNOTATIONS_JSON=$(mktemp)
-CMD="$CMD --reporter=json:$ANNOTATIONS_JSON"
+HAS_JSON_FILE=""
+if [ -n "$REPORTER" ]; then
+  for r in $(echo "$REPORTER" | tr ',' ' '); do
+    case "$r" in
+      json:*) HAS_JSON_FILE=$(echo "$r" | cut -d: -f2) ;;
+    esac
+  done
+fi
+if [ -n "$HAS_JSON_FILE" ]; then
+  ANNOTATIONS_JSON="$HAS_JSON_FILE"
+else
+  CMD="$CMD --reporter=json:$ANNOTATIONS_JSON"
+fi
 
 # type-map supports multiple comma-separated mappings
 if [ -n "$TYPE_MAP" ]; then
@@ -117,7 +130,9 @@ if [ -f "$ANNOTATIONS_JSON" ]; then
       print annotation
     }
   ' "$ANNOTATIONS_JSON"
-  rm -f "$ANNOTATIONS_JSON"
+  if [ -z "$HAS_JSON_FILE" ]; then
+    rm -f "$ANNOTATIONS_JSON"
+  fi
 fi
 
 exit $EXIT_CODE
