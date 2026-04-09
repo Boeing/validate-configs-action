@@ -1,5 +1,6 @@
 {
-  "name": "test",
+  "name": "annotation-test",
+  "description": "This file tests PR annotations",
   "items": [
     "one",
     "two"
