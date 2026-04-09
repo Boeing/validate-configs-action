@@ -290,5 +290,5 @@ Key points:
 
 ### PR inline annotations
 
-Validation errors automatically appear as inline annotations on pull request diffs. When a config file fails validation, the action emits GitHub Actions workflow commands that annotate the exact file and line where the error occurred. No extra configuration is needed — annotations work with any reporter setting.
+Validation errors automatically appear as inline annotations on pull request diffs. When a config file fails validation, the action emits GitHub Actions workflow commands that annotate the exact file and line where the error occurred. For config types that do not support line numbers in the error output, an annotation will be added at line 1.
 

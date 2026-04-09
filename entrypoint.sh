@@ -85,86 +85,32 @@ EXIT_CODE=$?
 set -e
 
 # Parse JSON output and emit GitHub Actions annotations for failures
-# Groups multiple errors on the same file+line+type into a single annotation
 if [ -f "$ANNOTATIONS_JSON" ]; then
-  awk '
-    /"path":/ {
-      gsub(/.*"path": *"/, ""); gsub(/".*/, "");
-      sub(/^\/github\/workspace\//, "");
-      path = $0
-      failed = 0
-    }
-    /"status": *"failed"/ { failed = 1 }
-    /"status": *"passed"/ { failed = 0 }
-    /"errors":/ && failed { in_errors = 1; err_count = 0; next }
-    in_errors && /\]/ {
-      in_errors = 0
-      # Group errors by line+col+title, emit one annotation per group
-      delete seen; delete gkeys; gcount = 0
-      for (i = 0; i < err_count; i++) {
-        key = err_line[i] "|" err_col[i] "|" err_title[i]
-        if (!(key in seen)) {
-          seen[key] = gcount
-          gkeys[gcount] = key
-          gmsg[gcount] = err_msg[i]
-          gcount++
-        } else {
-          gmsg[seen[key]] = gmsg[seen[key]] "%0A" err_msg[i]
-        }
-      }
-      for (i = 0; i < gcount; i++) {
-        split(gkeys[i], parts, "|")
-        msg = gmsg[i]
-        # Count errors and format with bullets if multiple
-        n = split(msg, items, "%0A")
-        if (n > 1) {
-          formatted = n " " tolower(parts[3]) "s found:"
-          for (j = 1; j <= n; j++) {
-            formatted = formatted "%0A• " items[j]
-          }
-          msg = formatted
-        }
-        annotation = "::error file=" path ",title=" parts[3] ",line=" parts[1]
-        if (parts[2] != "") annotation = annotation ",col=" parts[2]
-        annotation = annotation "::" msg
-        print annotation
-      }
-      delete err_line; delete err_col; delete err_title; delete err_msg
-      delete gmsg
-      next
-    }
-    in_errors && /"/ {
-      gsub(/^ *"/, ""); gsub(/"[,]?$/, "");
-      error_msg = $0
-      title = "Validation Error"
-      clean_msg = error_msg
-      if (match(error_msg, /^schema: /)) {
-        title = "Schema Error"
-        clean_msg = substr(error_msg, 9)
-      } else if (match(error_msg, /^syntax: /)) {
-        title = "Syntax Error"
-        clean_msg = substr(error_msg, 9)
-      }
-      line = ""; col = ""
-      if (match(clean_msg, /line [0-9]+/)) {
-        line = substr(clean_msg, RSTART+5, RLENGTH-5)
-      }
-      if (match(clean_msg, /\(string\):[0-9]+:/) && line == "") {
-        tmp = clean_msg
-        sub(/.*\(string\):/, "", tmp)
-        sub(/:.*/, "", tmp)
-        line = tmp
-      }
-      if (match(clean_msg, /column [0-9]+/)) {
-        col = substr(clean_msg, RSTART+7, RLENGTH-7)
-      }
-      if (line == "") line = "1"
-      err_line[err_count] = line
-      err_col[err_count] = col
-      err_title[err_count] = title
-      err_msg[err_count] = clean_msg
-      err_count++
-    }
+  jq -r '
+    .files[] | select(.status == "failed") |
+    (.path | sub("^/github/workspace/"; "")) as $path |
+    [.errors[] |
+      (if startswith("schema: ") then {title: "Schema Error", msg: .[8:]}
+       elif startswith("syntax: ") then {title: "Syntax Error", msg: .[8:]}
+       else {title: "Validation Error", msg: .}
+       end) |
+      (.msg | capture("line (?<l>[0-9]+)") // {l: null}) as $lm |
+      (.msg | capture("column (?<c>[0-9]+)") // {c: null}) as $cm |
+      (.msg | capture("\\(string\\):(?<l>[0-9]+):") // {l: null}) as $xm |
+      {title, msg, line: ($lm.l // $xm.l // "1"), col: $cm.c}
+    ] |
+    group_by([.line, .col, .title])[] |
+    (.[0].title) as $title |
+    (.[0].line) as $line |
+    (.[0].col) as $col |
+    [.[].msg] as $msgs |
+    (if ($msgs | length) > 1 then
+      "\($msgs | length) \($title | ascii_downcase)s found:\n" + ($msgs | map("\u2022 " + .) | join("\n"))
+     else $msgs[0]
+     end) as $body |
+    "::error file=\($path),title=\($title),line=\($line)" +
+    (if $col then ",col=\($col)" else "" end) +
+    "::\($body | gsub("\n"; "%0A"))"
   ' "$ANNOTATIONS_JSON"
   if [ -z "$HAS_JSON_FILE" ]; then
     rm -f "$ANNOTATIONS_JSON"
