@@ -46,9 +46,7 @@ jobs:
       - uses: ./
         with:
           search-paths: test
-          exclude-dirs: failing
-
-  # Exclude file types
+          exclude-dirs: failing,annotations
   test-exclude-file-types:
     name: "Test: exclude-file-types"
     runs-on: ubuntu-latest
@@ -68,7 +66,7 @@ jobs:
       - uses: ./
         with:
           search-paths: test
-          exclude-dirs: failing,schemas
+          exclude-dirs: failing,schemas,annotations
           file-types: json,yaml
 
   # Depth 0 (no recursion)
@@ -81,6 +79,7 @@ jobs:
         with:
           search-paths: test
           depth: "0"
+          exclude-dirs: annotations
 
   # JSON reporter
   test-reporter-json:
@@ -122,7 +121,7 @@ jobs:
       - uses: ./
         continue-on-error: true
         with:
-          search-paths: test/good.json test/good.yaml test/pr-bad.json
+          search-paths: test/good.json test/good.yaml test/annotations/pr-bad.json
 
   # Group by
   test-group-by:
@@ -133,7 +132,7 @@ jobs:
       - uses: ./
         with:
           search-paths: test
-          exclude-dirs: failing,schemas
+          exclude-dirs: failing,schemas,annotations
           group-by: "pass-fail"
 
   # Quiet mode
@@ -156,7 +155,7 @@ jobs:
       - uses: ./
         with:
           globbing: "true"
-          search-paths: "test/*.json"
+          search-paths: "test/good*.json"
 
   # type-map
   test-type-map:
