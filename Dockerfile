@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine AS builder
+FROM golang:1.26-alpine@sha256:c216c4343b489259302908b67a3c8fa55b283bdc30be729baa38b9953ca28857 AS builder
 RUN apk --no-cache add git
 RUN git clone --branch feat/action-integration --depth=1 https://github.com/Boeing/config-file-validator.git /src
 WORKDIR /src
