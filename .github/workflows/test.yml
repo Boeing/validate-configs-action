@@ -113,33 +113,16 @@ jobs:
             echo "Found: $f ($(wc -c < "$f") bytes)"
           done
 
-  # SARIF reporter with code scanning upload
-  test-sarif-upload:
-    name: "Test: SARIF upload to code scanning"
+  # PR annotations for validation errors
+  test-annotations:
+    name: "Test: PR annotations"
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - uses: ./
         continue-on-error: true
         with:
           search-paths: test/good.json test/good.yaml test/pr-bad.json
-          reporter: "sarif:validation-results.sarif,standard"
-      - name: Fix SARIF artifact URIs
-        if: always()
-        run: |
-          if [ -f validation-results.sarif ]; then
-            sed -i 's|file:///github/workspace/||g; s|file:////github/workspace/||g; s|file:///||g' validation-results.sarif
-            cat validation-results.sarif
-          fi
-      - name: Upload SARIF to code scanning
-        uses: github/codeql-action/upload-sarif@1b1aada464948af03b950897e5eb522f92603cc2 # v3.24.9
-        if: always()
-        with:
-          sarif_file: validation-results.sarif
-          category: config-file-validator
 
   # Group by
   test-group-by:

@@ -44,6 +44,10 @@ if [ -n "$REPORTER" ]; then
   done
 fi
 
+# Always add a JSON reporter to a temp file for annotation parsing
+ANNOTATIONS_JSON=$(mktemp)
+CMD="$CMD --reporter=json:$ANNOTATIONS_JSON"
+
 # type-map supports multiple comma-separated mappings
 if [ -n "$TYPE_MAP" ]; then
   for t in $(echo "$TYPE_MAP" | tr ',' ' '); do
@@ -61,4 +65,42 @@ fi
 # add search paths
 CMD="$CMD $SEARCH_PATHS"
 
+# Run validator, capture exit code
+set +e
 ( ${CMD} )
+EXIT_CODE=$?
+set -e
+
+# Parse JSON output and emit GitHub Actions annotations for failures
+if [ -f "$ANNOTATIONS_JSON" ]; then
+  # Use awk to parse the JSON and emit ::error annotations
+  awk '
+    /"path":/ {
+      gsub(/.*"path": *"/, ""); gsub(/".*/, "");
+      # Strip /github/workspace/ prefix to get repo-relative path
+      sub(/^\/github\/workspace\//, "");
+      path = $0
+    }
+    /"status": *"failed"/ { failed = 1 }
+    /"status": *"passed"/ { failed = 0 }
+    /"error":/ && failed {
+      gsub(/.*"error": *"/, ""); gsub(/".*/, "");
+      error_msg = $0
+      line = ""; col = ""
+      if (match(error_msg, /line [0-9]+/)) {
+        line = substr(error_msg, RSTART+5, RLENGTH-5)
+      }
+      if (match(error_msg, /column [0-9]+/)) {
+        col = substr(error_msg, RSTART+7, RLENGTH-7)
+      }
+      annotation = "::error file=" path
+      if (line != "") annotation = annotation ",line=" line
+      if (col != "") annotation = annotation ",col=" col
+      annotation = annotation "::" error_msg
+      print annotation
+    }
+  ' "$ANNOTATIONS_JSON"
+  rm -f "$ANNOTATIONS_JSON"
+fi
+
+exit $EXIT_CODE

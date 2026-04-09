@@ -283,3 +283,12 @@ jobs:
             sarif_file: validation-results.sarif
 ```
 
+Key points:
+- `reporter: "sarif:validation-results.sarif,standard"` produces both a SARIF file for upload and standard console output
+- `if: always()` ensures the SARIF upload runs even when validation fails (exit code 1)
+- `security-events: write` permission is required for the upload step
+
+### PR inline annotations
+
+Validation errors automatically appear as inline annotations on pull request diffs. When a config file fails validation, the action emits GitHub Actions workflow commands that annotate the exact file and line where the error occurred. No extra configuration is needed — annotations work with any reporter setting.
+
