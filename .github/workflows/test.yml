@@ -131,8 +131,8 @@ jobs:
         if: always()
         run: |
           if [ -f validation-results.sarif ]; then
-            sed -i 's|file:///github/workspace/||g' validation-results.sarif
-            sed -i 's|file:///||g' validation-results.sarif
+            sed -i 's|file:///github/workspace/||g; s|file:////github/workspace/||g; s|file:///||g' validation-results.sarif
+            cat validation-results.sarif
           fi
       - name: Upload SARIF to code scanning
         uses: github/codeql-action/upload-sarif@1b1aada464948af03b950897e5eb522f92603cc2 # v3.24.9

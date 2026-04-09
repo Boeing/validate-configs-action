@@ -1,15 +1,12 @@
+FROM golang:1.26-alpine@sha256:7667e40de01ef81b25dea1a0a4e3a2d0e3b93e85bcf64a6e6e69a1e8badf323a AS builder
+RUN apk --no-cache add git
+RUN git clone --branch feat/action-integration --depth=1 https://github.com/Boeing/config-file-validator.git /src
+WORKDIR /src
+RUN CGO_ENABLED=0 go build -ldflags='-w -s' -o /validator cmd/validator/validator.go
+
 FROM alpine:3.23@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
+COPY --from=builder /validator /usr/local/bin/validator
 COPY entrypoint.sh /entrypoint.sh
-ENV CFV_VERSION=v2.0.0
-ENV CFV_SHA256=dc94bace710dc5cfd4ef885960b517b47ae72cb26850d4487f2de5dd8766bc85
-RUN apk --no-cache add curl tar && \
-  curl https://github.com/Boeing/config-file-validator/releases/download/${CFV_VERSION}/validator-${CFV_VERSION}-linux-386.tar.gz \
-  -o /tmp/validator-${CFV_VERSION}-linux-386.tar.gz  -s -L && \
-  echo "${CFV_SHA256}  /tmp/validator-${CFV_VERSION}-linux-386.tar.gz" | sha256sum -c - && \
-  tar -xvf /tmp/validator-${CFV_VERSION}-linux-386.tar.gz -C /tmp && \
-  mv /tmp/validator /usr/local/bin && \
-  rm -rf /tmp/* && \
-  chmod 0755 /usr/local/bin/validator && \
-  chmod 0755 /entrypoint.sh
+RUN chmod 0755 /usr/local/bin/validator && chmod 0755 /entrypoint.sh
 WORKDIR /github/workspace
 ENTRYPOINT ["/entrypoint.sh"]
