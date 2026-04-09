@@ -46,7 +46,7 @@ jobs:
       - uses: ./
         with:
           search-paths: test
-          exclude-dirs: failing,annotations
+          exclude-dirs: failing
   test-exclude-file-types:
     name: "Test: exclude-file-types"
     runs-on: ubuntu-latest
@@ -66,7 +66,7 @@ jobs:
       - uses: ./
         with:
           search-paths: test
-          exclude-dirs: failing,schemas,annotations
+          exclude-dirs: failing,schemas
           file-types: json,yaml
 
   # Depth 0 (no recursion)
@@ -79,7 +79,6 @@ jobs:
         with:
           search-paths: test
           depth: "0"
-          exclude-dirs: annotations
 
   # JSON reporter
   test-reporter-json:
@@ -112,17 +111,6 @@ jobs:
             echo "Found: $f ($(wc -c < "$f") bytes)"
           done
 
-  # PR annotations for validation errors
-  test-annotations:
-    name: "Test: PR annotations"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-      - uses: ./
-        with:
-          search-paths: test/annotations
-          schema-map: "**/bad-schema.json:test/schemas/test.schema.json,**/bad-schema.yaml:test/schemas/test.schema.json,**/bad-schema.toml:test/schemas/test.schema.json,**/bad-schema.xml:test/schemas/test.xsd,**/multi-error-schema.json:test/schemas/strict.schema.json"
-
   # Group by
   test-group-by:
     name: "Test: group-by"
@@ -132,7 +120,7 @@ jobs:
       - uses: ./
         with:
           search-paths: test
-          exclude-dirs: failing,schemas,annotations
+          exclude-dirs: failing,schemas
           group-by: "pass-fail"
 
   # Quiet mode

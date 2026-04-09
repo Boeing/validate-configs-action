@@ -1,6 +1,0 @@
-{
-  "project": "validate-configs-action",
-  "type": "github-action",
-  "tags": ["validation", "config"
-  "maintainers": ["boeing"]
-}
