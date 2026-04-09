@@ -20,15 +20,15 @@
 * INI
 * JSON
 * Properties
+* SARIF
 * TOML
+* TOON
 * XML
 * YAML
 
-
-
 Each file will get validated for the correct syntax and the results collected into a report showing the path of the file and if it is invalid or valid. If the file is invalid an error will be displayed along with the line number and column where the error ocurred. By default the `$GITHUB_WORKDIR` is scanned.
 
-![Standard Run](./img/standard_run.png)
+Files that declare a schema (JSON Schema for JSON/YAML/TOML/TOON, XSD for XML) are automatically validated against it.
 
 ## Inputs
 
@@ -36,10 +36,18 @@ Each file will get validated for the correct syntax and the results collected in
 | ------------------ | -------- | ------------- | ----------- |
 | search-paths       | false    | `"."`         | The path that will be recursively searched for configuration files |
 | exclude-dirs       | false    | `""`          | A comma-separated list of subdirectories to exclude from validation |
-| exclude-file-types | false    | `""`          | A comma-separated list of file extensions to exclude. Possible values are `xml`, `ini`, `yaml`, `yml`, `toml`, and `json` |
-| depth              | false    | `""`          | An integer value limiting the depth of recursion for the search paths. For example, setting depth to 0 would disable recursion |
-| reporter           | false    | `"standard"`  | Format of the report printed to stdout. Options are `standard` and `json` |
-| group-by           | false    | `""`          | Group output by filetype, directory, pass-fail |
+| exclude-file-types | false    | `""`          | A comma-separated list of file extensions to exclude |
+| file-types         | false    | `""`          | A comma-separated list of file types to validate. Cannot be used with exclude-file-types |
+| depth              | false    | `""`          | An integer value limiting the depth of recursion for the search paths. Setting depth to 0 disables recursion |
+| reporter           | false    | `"standard"`  | Comma-separated report formats with optional output paths. Format: `type:path`. Options are `standard`, `json`, `junit`, and `sarif` |
+| group-by           | false    | `""`          | Group output by `filetype`, `directory`, or `pass-fail` |
+| quiet              | false    | `"false"`     | If set to `true`, suppresses all output to stdout |
+| globbing           | false    | `"false"`     | If set to `true`, enables glob pattern matching for search paths |
+| require-schema     | false    | `"false"`     | If set to `true`, fail validation for files that support schema validation but do not declare a schema |
+| no-schema          | false    | `"false"`     | If set to `true`, disable all schema validation (syntax-only). Cannot be used with `require-schema`, `schema-map`, or `schemastore` |
+| schemastore        | false    | `""`          | Path to a local SchemaStore clone for automatic schema lookup by filename |
+| type-map           | false    | `""`          | Comma-separated glob pattern to file type mappings. Format: `pattern:type` |
+| schema-map         | false    | `""`          | Comma-separated glob pattern to schema file mappings. Format: `pattern:schema_path` |
 
 
 ## Outputs
@@ -55,7 +63,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v1.0.0
+      - uses: Boeing/validate-configs-action@v2.0.0
 ```
 
 ### Custom search path
@@ -65,9 +73,9 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v1.0.0
+      - uses: Boeing/validate-configs-action@v2.0.0
         with:
-            search-path: ./project/configs
+            search-paths: ./project/configs
 ```
 
 ### Multiple search paths
@@ -77,9 +85,9 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v1.0.0
+      - uses: Boeing/validate-configs-action@v2.0.0
         with:
-            search-path: ./project/configs ./project/devops
+            search-paths: ./project/configs ./project/devops
 ```
 
 ### Exclude a directory
@@ -89,7 +97,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v1.0.0
+      - uses: Boeing/validate-configs-action@v2.0.0
         with:
             exclude-dirs: "tests,vendor"
 ```
@@ -101,9 +109,21 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v1.0.0
+      - uses: Boeing/validate-configs-action@v2.0.0
         with:
             exclude-file-types: "json,xml"
+```
+
+### Include only specific file types
+
+```yml
+jobs:
+  validate-config-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Boeing/validate-configs-action@v2.0.0
+        with:
+            file-types: "json,yaml"
 ```
 
 ### Disable recursive scanning
@@ -113,7 +133,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v1.0.0
+      - uses: Boeing/validate-configs-action@v2.0.0
         with:
             depth: 0
 ```
@@ -125,9 +145,21 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v1.0.0
+      - uses: Boeing/validate-configs-action@v2.0.0
         with:
             reporter: "json"
+```
+
+### Multiple reporters with output files
+
+```yml
+jobs:
+  validate-config-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Boeing/validate-configs-action@v2.0.0
+        with:
+            reporter: "json:output.json,junit:results.xml"
 ```
 
 ### Group By Pass/Fail
@@ -137,8 +169,121 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v1.0.0
+      - uses: Boeing/validate-configs-action@v2.0.0
         with:
             group-by: "pass-fail"
 ```
 
+### Quiet mode
+
+```yml
+jobs:
+  validate-config-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Boeing/validate-configs-action@v2.0.0
+        with:
+            quiet: "true"
+```
+
+### Glob pattern matching
+
+```yml
+jobs:
+  validate-config-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Boeing/validate-configs-action@v2.0.0
+        with:
+            globbing: "true"
+            search-paths: "**/*.json"
+```
+
+### Require schema declarations
+
+```yml
+jobs:
+  validate-config-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Boeing/validate-configs-action@v2.0.0
+        with:
+            require-schema: "true"
+```
+
+### Disable schema validation
+
+```yml
+jobs:
+  validate-config-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Boeing/validate-configs-action@v2.0.0
+        with:
+            no-schema: "true"
+```
+
+### Automatic schema lookup with SchemaStore
+
+```yml
+jobs:
+  validate-config-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: git clone --depth=1 https://github.com/SchemaStore/schemastore.git
+      - uses: Boeing/validate-configs-action@v2.0.0
+        with:
+            schemastore: "./schemastore"
+```
+
+### Map file types with glob patterns
+
+```yml
+jobs:
+  validate-config-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Boeing/validate-configs-action@v2.0.0
+        with:
+            type-map: "**/inventory:ini,**/*.cfg:json"
+```
+
+### Map schemas to files
+
+```yml
+jobs:
+  validate-config-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Boeing/validate-configs-action@v2.0.0
+        with:
+            schema-map: "**/package.json:schemas/package.schema.json,**/config.xml:schemas/config.xsd"
+```
+
+### PR inline annotations via GitHub code scanning
+
+You can get inline annotations on pull request diffs (like golangci-lint, Scorecard, etc.) by outputting a SARIF report and uploading it with `github/codeql-action/upload-sarif`. This uses GitHub's code scanning infrastructure to annotate the exact files and lines with validation errors.
+
+```yml
+jobs:
+  validate-config-files:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Boeing/validate-configs-action@v2.0.0
+        with:
+            reporter: "sarif:validation-results.sarif,standard"
+      - name: Upload SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+            sarif_file: validation-results.sarif
+```
+
+Key points:
+- `reporter: "sarif:validation-results.sarif,standard"` produces both a SARIF file for upload and standard console output
+- `if: always()` ensures the SARIF upload runs even when validation fails (exit code 1)
+- `security-events: write` permission is required for the upload step

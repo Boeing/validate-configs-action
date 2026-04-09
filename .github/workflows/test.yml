@@ -8,15 +8,24 @@ on:
 
 # Declare default permissions as read only.
 permissions: read-all
-  
+
 jobs:
   run-tests:
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-      - name: Test Defaults
-        uses: Boeing/validate-configs-action@v1.0.0
-        with:
-          exclude-dirs: failing
-          search-paths: test/good.ini test/good.json test/good.toml test/good.xml test/good.yaml
 
+      - name: Validate config files
+        uses: Boeing/validate-configs-action@v2.0.0
+        with:
+          search-paths: test/good.ini test/good.json test/good.toml test/good.xml test/good.yaml
+          exclude-dirs: failing
+          reporter: "sarif:validation-results.sarif,standard"
+
+      - name: Upload SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@1b1aada464948af03b950897e5eb522f92603cc2 # v3.24.9
+        if: always()
+        with:
+          sarif_file: validation-results.sarif
