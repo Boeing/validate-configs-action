@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/bmatcuk/doublestar/v4"
+
 	"github.com/Boeing/config-file-validator/v2/pkg/cli"
 	"github.com/Boeing/config-file-validator/v2/pkg/filetype"
 	"github.com/Boeing/config-file-validator/v2/pkg/finder"
@@ -44,9 +46,6 @@ func run() int {
 	groupBy := os.Args[7]
 	quiet := os.Args[8]
 	globbing := os.Args[9]
-	if globbing == "true" {
-		os.Setenv("CFV_GLOBBING", "true")
-	}
 	requireSchema := os.Args[10]
 	noSchema := os.Args[11]
 	schemaStorePath := os.Args[12]
@@ -59,6 +58,14 @@ func run() int {
 	paths := []string{"."}
 	if searchPaths != "" {
 		paths = strings.Fields(searchPaths)
+	}
+	if globbing == "true" {
+		expanded, err := expandGlobs(paths)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error expanding globs: %v\n", err)
+			return 1
+		}
+		paths = expanded
 	}
 	fsOpts = append(fsOpts, finder.WithPathRoots(paths...))
 
@@ -208,6 +215,22 @@ func parseSchemaMap(input string) (map[string]string, error) {
 			return nil, fmt.Errorf("invalid schema-map format %q", mapping)
 		}
 		result[parts[0]] = parts[1]
+	}
+	return result, nil
+}
+
+func expandGlobs(patterns []string) ([]string, error) {
+	var result []string
+	for _, p := range patterns {
+		if strings.ContainsAny(p, "*?[]") {
+			matches, err := doublestar.Glob(os.DirFS("."), p)
+			if err != nil {
+				return nil, fmt.Errorf("glob error for %q: %w", p, err)
+			}
+			result = append(result, matches...)
+		} else {
+			result = append(result, p)
+		}
 	}
 	return result, nil
 }

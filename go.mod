@@ -2,13 +2,15 @@ module github.com/Boeing/validate-configs-action
 
 go 1.26.1
 
-require github.com/Boeing/config-file-validator/v2 v2.1.0
+require (
+	github.com/Boeing/config-file-validator/v2 v2.1.0
+	github.com/bmatcuk/doublestar/v4 v4.10.0
+)
 
 require (
 	github.com/agext/levenshtein v1.2.1 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/editorconfig/editorconfig-core-go/v2 v2.6.4 // indirect
 	github.com/fatih/color v1.19.0 // indirect
