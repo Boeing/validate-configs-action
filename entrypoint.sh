@@ -73,19 +73,19 @@ set -e
 
 # Parse JSON output and emit GitHub Actions annotations for failures
 if [ -f "$ANNOTATIONS_JSON" ]; then
-  # Use awk to parse the JSON and emit ::error annotations
   awk '
     /"path":/ {
       gsub(/.*"path": *"/, ""); gsub(/".*/, "");
-      # Strip /github/workspace/ prefix to get repo-relative path
       sub(/^\/github\/workspace\//, "");
       path = $0
       failed = 0
     }
     /"status": *"failed"/ { failed = 1 }
     /"status": *"passed"/ { failed = 0 }
-    /"error":/ && failed {
-      gsub(/.*"error": *"/, ""); gsub(/".*/, "");
+    /"errors":/ && failed { in_errors = 1; next }
+    in_errors && /\]/ { in_errors = 0; next }
+    in_errors && /"/ {
+      gsub(/^ *"/, ""); gsub(/"[,]?$/, "");
       error_msg = $0
       line = ""; col = ""
       if (match(error_msg, /line [0-9]+/)) {
