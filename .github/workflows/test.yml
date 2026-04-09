@@ -121,7 +121,8 @@ jobs:
       - uses: ./
         continue-on-error: true
         with:
-          search-paths: test/good.json test/good.yaml test/annotations/pr-bad.json
+          search-paths: test/annotations
+          schema-map: "**/bad-schema.json:test/schemas/test.schema.json,**/bad-schema.yaml:test/schemas/test.schema.json,**/bad-schema.toml:test/schemas/test.schema.json,**/bad-schema.xml:test/schemas/test.xsd"
 
   # Group by
   test-group-by:
