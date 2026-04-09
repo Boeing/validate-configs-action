@@ -9,11 +9,15 @@ inputs:
     required: false
     default: '.'
   exclude-dirs:
-    description: 'A comman separated list of directories to exclude in the search path. Example: "subdir1,subdir2"'
+    description: 'A comma separated list of directories to exclude in the search path. Example: "subdir1,subdir2"'
     required: false
     default: ""
   exclude-file-types:
-    description: 'A comman separated list of file types to exclude. Example: "csv,json"'
+    description: 'A comma separated list of file types to exclude. Example: "csv,json"'
+    required: false
+    default: ""
+  file-types:
+    description: 'A comma separated list of file types to validate. Cannot be used with exclude-file-types. Example: "json,yaml"'
     required: false
     default: ""
   depth:
@@ -21,11 +25,39 @@ inputs:
     required: false
     default: ""
   reporter:
-    description: 'Format of the printed report. Options are standard and json (default "standard")'
+    description: 'Comma separated list of report formats with optional output paths. Format: type:path. Options are standard, json, junit, sarif (default "standard")'
     required: false
     default: "standard"
   group-by:
-    description: A comman separated list of how to group the output. Options are file type, directory, or pass-fail.
+    description: 'A comma separated list of how to group the output. Options are filetype, directory, or pass-fail.'
+    required: false
+    default: ""
+  quiet:
+    description: 'If set to true, suppresses all output to stdout'
+    required: false
+    default: "false"
+  globbing:
+    description: 'If set to true, enables glob pattern matching for search paths'
+    required: false
+    default: "false"
+  require-schema:
+    description: 'If set to true, fail validation for files that support schema validation but do not declare a schema'
+    required: false
+    default: "false"
+  no-schema:
+    description: 'If set to true, disable all schema validation. Only syntax is checked. Cannot be used with require-schema, schema-map, or schemastore'
+    required: false
+    default: "false"
+  schemastore:
+    description: 'Path to a local SchemaStore clone for automatic schema lookup by filename'
+    required: false
+    default: ""
+  type-map:
+    description: 'Comma separated list of glob pattern to file type mappings. Format: pattern:type. Example: "**/inventory:ini,**/*.cfg:json"'
+    required: false
+    default: ""
+  schema-map:
+    description: 'Comma separated list of glob pattern to schema file mappings. Format: pattern:schema_path. Example: "**/package.json:schemas/pkg.json,**/config.xml:schemas/config.xsd"'
     required: false
     default: ""
 
@@ -36,9 +68,17 @@ runs:
     - ${{ inputs.search-paths }}
     - ${{ inputs.exclude-dirs }}
     - ${{ inputs.exclude-file-types }}
+    - ${{ inputs.file-types }}
     - ${{ inputs.depth }}
     - ${{ inputs.reporter }}
     - ${{ inputs.group-by }}
+    - ${{ inputs.quiet }}
+    - ${{ inputs.globbing }}
+    - ${{ inputs.require-schema }}
+    - ${{ inputs.no-schema }}
+    - ${{ inputs.schemastore }}
+    - ${{ inputs.type-map }}
+    - ${{ inputs.schema-map }}
 
 branding:
   color: 'blue'

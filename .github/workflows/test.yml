@@ -6,17 +6,224 @@ on:
       - main
   pull_request:
 
-# Declare default permissions as read only.
 permissions: read-all
-  
+
 jobs:
-  run-tests:
+  # Basic: validate known-good files with defaults
+  test-defaults:
+    name: "Test: default options"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-      - name: Test Defaults
-        uses: Boeing/validate-configs-action@v1.0.0
+      - uses: ./
         with:
-          exclude-dirs: failing
-          search-paths: test/good.ini test/good.json test/good.toml test/good.xml test/good.yaml
+          search-paths: test/good.json test/good.yaml test/good.toml test/good.xml test/good.ini
 
+  # Validate that bad files cause a non-zero exit
+  test-failing-files:
+    name: "Test: detect invalid files"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        id: validate
+        continue-on-error: true
+        with:
+          search-paths: test/failing
+      - name: Assert failure
+        run: |
+          if [ "${{ steps.validate.outcome }}" != "failure" ]; then
+            echo "Expected validation to fail for bad files"
+            exit 1
+          fi
+
+  # Exclude directories
+  test-exclude-dirs:
+    name: "Test: exclude-dirs"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test
+          exclude-dirs: failing
+
+  # Exclude file types
+  test-exclude-file-types:
+    name: "Test: exclude-file-types"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test/good.json test/good.yaml
+          exclude-file-types: json
+
+  # Include only specific file types
+  test-file-types:
+    name: "Test: file-types"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test
+          exclude-dirs: failing,schemas
+          file-types: json,yaml
+
+  # Depth 0 (no recursion)
+  test-depth:
+    name: "Test: depth=0"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test
+          depth: "0"
+
+  # JSON reporter
+  test-reporter-json:
+    name: "Test: JSON reporter"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test/good.json
+          reporter: json
+      
+  # Multiple reporters with file output
+  test-reporter-multi:
+    name: "Test: multiple reporters with output files"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test/good.json test/good.yaml
+          reporter: "json:report.json,junit:report.xml,sarif:report.sarif"
+      - name: Verify output files exist
+        run: |
+          for f in report.json report.xml report.sarif; do
+            if [ ! -f "$f" ]; then
+              echo "Missing expected output file: $f"
+              exit 1
+            fi
+            echo "Found: $f ($(wc -c < "$f") bytes)"
+          done
+
+  # SARIF reporter with code scanning upload
+  test-sarif-upload:
+    name: "Test: SARIF upload to code scanning"
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test/good.json test/good.yaml
+          reporter: "sarif:validation-results.sarif,standard"
+      - name: Upload SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@1b1aada464948af03b950897e5eb522f92603cc2 # v3.24.9
+        if: always()
+        with:
+          sarif_file: validation-results.sarif
+          category: config-file-validator
+
+  # Group by
+  test-group-by:
+    name: "Test: group-by"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test
+          exclude-dirs: failing,schemas
+          group-by: "pass-fail"
+
+  # Quiet mode
+  test-quiet:
+    name: "Test: quiet mode"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test/good.json
+          quiet: "true"
+
+  # Globbing
+  test-globbing:
+    name: "Test: globbing"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          globbing: "true"
+          search-paths: "test/*.json"
+
+  # type-map
+  test-type-map:
+    name: "Test: type-map"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test/noext-config
+          type-map: "**/noext-config:ini"
+
+  # schema-map
+  test-schema-map:
+    name: "Test: schema-map"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test/with-schema.json
+          schema-map: "**/with-schema.json:test/schemas/test.schema.json"
+
+  # Inline schema validation
+  test-schema-inline:
+    name: "Test: inline schema declaration"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test/with-schema.json
+
+  # no-schema (syntax only)
+  test-no-schema:
+    name: "Test: no-schema"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test/with-schema.json
+          no-schema: "true"
+
+  # require-schema should fail on files without schema declarations
+  test-require-schema:
+    name: "Test: require-schema"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        id: validate
+        continue-on-error: true
+        with:
+          search-paths: test/good.json
+          require-schema: "true"
+      - name: Assert failure
+        run: |
+          if [ "${{ steps.validate.outcome }}" != "failure" ]; then
+            echo "Expected validation to fail when schema is required but not declared"
+            exit 1
+          fi
