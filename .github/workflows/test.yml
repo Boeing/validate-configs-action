@@ -122,8 +122,9 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - uses: ./
+        continue-on-error: true
         with:
-          search-paths: test/good.json test/good.yaml
+          search-paths: test/good.json test/good.yaml test/pr-bad.json
           reporter: "sarif:validation-results.sarif,standard"
       - name: Upload SARIF to code scanning
         uses: github/codeql-action/upload-sarif@1b1aada464948af03b950897e5eb522f92603cc2 # v3.24.9
