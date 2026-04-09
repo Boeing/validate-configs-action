@@ -130,6 +130,7 @@ jobs:
         if: always()
         with:
           sarif_file: validation-results.sarif
+          checkout_path: /github/workspace
 
   # Group by
   test-group-by:
