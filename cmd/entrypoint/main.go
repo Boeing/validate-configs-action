@@ -219,7 +219,10 @@ func getChangedFiles() (map[string]struct{}, error) {
 		return nil, fmt.Errorf("GITHUB_BASE_REF not set (not a pull request?)")
 	}
 
-	// Fetch the base branch for comparison
+	// Docker containers run as root but the workspace is owned by the runner user
+	safe := exec.Command("git", "config", "--global", "--add", "safe.directory", "/github/workspace")
+	safe.Run()
+
 	fetch := exec.Command("git", "fetch", "origin", baseBranch, "--depth=1")
 	fetch.Stderr = os.Stderr
 	if err := fetch.Run(); err != nil {
