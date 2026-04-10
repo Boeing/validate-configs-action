@@ -64,6 +64,18 @@ inputs:
     description: 'Comma separated list of glob pattern to schema file mappings. Format: pattern:schema_path. Example: "**/package.json:schemas/pkg.json,**/config.xml:schemas/config.xsd"'
     required: false
     default: ""
+  only-changed:
+    description: 'If set to true, only validate files changed in the current pull request'
+    required: false
+    default: "false"
+
+outputs:
+  files-validated:
+    description: 'Total number of files scanned'
+  files-failed:
+    description: 'Number of files that failed validation'
+  exit-code:
+    description: 'Exit code from validation (0=success, 1=validation errors, 2=runtime error)'
 
 runs:
   using: 'docker'
@@ -84,6 +96,7 @@ runs:
     - ${{ inputs.schemastore-path }}
     - ${{ inputs.type-map }}
     - ${{ inputs.schema-map }}
+    - ${{ inputs.only-changed }}
 
 branding:
   color: 'blue'

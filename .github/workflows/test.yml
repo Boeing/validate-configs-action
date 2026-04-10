@@ -217,3 +217,36 @@ jobs:
         with:
           search-paths: test/good.json
           schemastore: "true"
+
+  # Validate only changed files
+  test-only-changed:
+    name: "Test: only-changed"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
+      - uses: ./
+        with:
+          only-changed: "true"
+
+  # Verify outputs are set
+  test-outputs:
+    name: "Test: outputs"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        id: validate
+        with:
+          search-paths: test/good.json
+      - name: Verify outputs
+        run: |
+          if [ -z "${{ steps.validate.outputs.files-validated }}" ]; then
+            echo "Missing files-validated output"
+            exit 1
+          fi
+          echo "files-validated=${{ steps.validate.outputs.files-validated }}"
+          echo "files-failed=${{ steps.validate.outputs.files-failed }}"
+          echo "exit-code=${{ steps.validate.outputs.exit-code }}"
