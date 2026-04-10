@@ -48,9 +48,10 @@ func run() int {
 	globbing := os.Args[9]
 	requireSchema := os.Args[10]
 	noSchema := os.Args[11]
-	schemaStorePath := os.Args[12]
-	typeMap := os.Args[13]
-	schemaMap := os.Args[14]
+	schemaStoreEnabled := os.Args[12]
+	schemaStorePath := os.Args[13]
+	typeMap := os.Args[14]
+	schemaMap := os.Args[15]
 
 	// Build finder options
 	var fsOpts []finder.FSFinderOptions
@@ -139,6 +140,13 @@ func run() int {
 		store, err := schemastore.Open(schemaStorePath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error opening schemastore: %v\n", err)
+			return 1
+		}
+		cliOpts = append(cliOpts, cli.WithSchemaStore(store))
+	} else if schemaStoreEnabled == "true" {
+		store, err := schemastore.OpenEmbedded()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error opening embedded schemastore: %v\n", err)
 			return 1
 		}
 		cliOpts = append(cliOpts, cli.WithSchemaStore(store))

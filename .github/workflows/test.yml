@@ -206,3 +206,14 @@ jobs:
             echo "Expected validation to fail when schema is required but not declared"
             exit 1
           fi
+
+  # Embedded schemastore with remote fetching
+  test-schemastore:
+    name: "Test: schemastore (embedded)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test/good.json
+          schemastore: "true"

@@ -3,7 +3,7 @@ module github.com/Boeing/validate-configs-action
 go 1.26.1
 
 require (
-	github.com/Boeing/config-file-validator/v2 v2.1.0
+	github.com/Boeing/config-file-validator/v2 v2.1.1-0.20260410183803-3b3739c9a3cf
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 )
 
@@ -26,6 +26,7 @@ require (
 	github.com/mitchellh/go-wordwrap v0.0.0-20150314170334-ad45545899c7 // indirect
 	github.com/owenrumney/go-sarif/v3 v3.3.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.3.0 // indirect
+	github.com/tailscale/hujson v0.0.0-20260302212456-ecc657c15afd // indirect
 	github.com/toon-format/toon-go v0.0.0-20251108125615-44b4cd22477f // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect

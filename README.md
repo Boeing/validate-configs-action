@@ -18,6 +18,7 @@
 * HCL
 * HOCON
 * INI
+* JSONC
 * JSON
 * Properties
 * SARIF
@@ -49,7 +50,8 @@ Validation errors automatically appear as inline annotations on pull request dif
 | globbing           | false    | `"false"`     | If set to `true`, enables glob pattern matching for search paths |
 | require-schema     | false    | `"false"`     | If set to `true`, fail validation for files that support schema validation but do not declare a schema |
 | no-schema          | false    | `"false"`     | If set to `true`, disable all schema validation (syntax-only). Cannot be used with `require-schema`, `schema-map`, or `schemastore` |
-| schemastore        | false    | `""`          | Path to a local SchemaStore clone for automatic schema lookup by filename |
+| schemastore        | false    | `"false"`     | If set to `true`, enables automatic schema lookup using the embedded SchemaStore catalog with remote fetching |
+| schemastore-path   | false    | `""`          | Path to a local SchemaStore clone for automatic schema lookup. For air-gapped environments. Implies `schemastore` |
 | type-map           | false    | `""`          | Comma-separated glob pattern to file type mappings. Format: `pattern:type` |
 | schema-map         | false    | `""`          | Comma-separated glob pattern to schema file mappings. Format: `pattern:schema_path` |
 
@@ -234,11 +236,23 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
+      - uses: Boeing/validate-configs-action@v2.0.0
+        with:
+            schemastore: "true"
+```
+
+### Automatic schema lookup with local SchemaStore clone
+
+```yml
+jobs:
+  validate-config-files:
+    runs-on: ubuntu-latest
+    steps:
       - uses: actions/checkout@v4
       - run: git clone --depth=1 https://github.com/SchemaStore/schemastore.git
       - uses: Boeing/validate-configs-action@v2.0.0
         with:
-            schemastore: "./schemastore"
+            schemastore-path: "./schemastore"
 ```
 
 ### Map file types with glob patterns

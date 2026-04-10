@@ -49,7 +49,11 @@ inputs:
     required: false
     default: "false"
   schemastore:
-    description: 'Path to a local SchemaStore clone for automatic schema lookup by filename'
+    description: 'If set to true, enables automatic schema lookup using the embedded SchemaStore catalog with remote fetching'
+    required: false
+    default: "false"
+  schemastore-path:
+    description: 'Path to a local SchemaStore clone for automatic schema lookup (implies schemastore). For air-gapped environments'
     required: false
     default: ""
   type-map:
@@ -77,6 +81,7 @@ runs:
     - ${{ inputs.require-schema }}
     - ${{ inputs.no-schema }}
     - ${{ inputs.schemastore }}
+    - ${{ inputs.schemastore-path }}
     - ${{ inputs.type-map }}
     - ${{ inputs.schema-map }}
 
