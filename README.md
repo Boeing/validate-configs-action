@@ -54,11 +54,16 @@ Validation errors automatically appear as inline annotations on pull request dif
 | schemastore-path   | false    | `""`          | Path to a local SchemaStore clone for automatic schema lookup. For air-gapped environments. Implies `schemastore` |
 | type-map           | false    | `""`          | Comma-separated glob pattern to file type mappings. Format: `pattern:type` |
 | schema-map         | false    | `""`          | Comma-separated glob pattern to schema file mappings. Format: `pattern:schema_path` |
+| only-changed       | false    | `"false"`     | If set to `true`, only validate files changed in the current pull request |
 
 
 ## Outputs
 
-N/A
+| Output           | Description |
+| ---------------- | ----------- |
+| files-validated  | Total number of files scanned |
+| files-failed     | Number of files that failed validation |
+| exit-code        | Exit code from validation (0=success, 1=validation errors, 2=runtime error) |
 
 ## Example usage
 
@@ -69,7 +74,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
 ```
 
 ### Custom search path
@@ -79,7 +84,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             search-paths: ./project/configs
 ```
@@ -91,7 +96,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             search-paths: ./project/configs ./project/devops
 ```
@@ -103,7 +108,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             exclude-dirs: "tests,vendor"
 ```
@@ -115,7 +120,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             exclude-file-types: "json,xml"
 ```
@@ -127,7 +132,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             file-types: "json,yaml"
 ```
@@ -139,7 +144,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             depth: 0
 ```
@@ -151,7 +156,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             reporter: "json"
 ```
@@ -163,7 +168,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             reporter: "json:output.json,junit:results.xml"
 ```
@@ -175,7 +180,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             group-by: "pass-fail"
 ```
@@ -187,7 +192,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             quiet: "true"
 ```
@@ -199,7 +204,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             globbing: "true"
             search-paths: "**/*.json"
@@ -212,7 +217,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             require-schema: "true"
 ```
@@ -224,7 +229,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             no-schema: "true"
 ```
@@ -236,7 +241,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             schemastore: "true"
 ```
@@ -250,7 +255,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: git clone --depth=1 https://github.com/SchemaStore/schemastore.git
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             schemastore-path: "./schemastore"
 ```
@@ -262,7 +267,7 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             type-map: "**/inventory:ini,**/*.cfg:json"
 ```
@@ -274,7 +279,43 @@ jobs:
   validate-config-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: Boeing/validate-configs-action@v2.0.0
+      - uses: Boeing/validate-configs-action@v2
         with:
             schema-map: "**/package.json:schemas/package.schema.json,**/config.xml:schemas/config.xsd"
 ```
+
+
+### Validate only changed files in a PR
+
+```yml
+jobs:
+  validate-config-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+            fetch-depth: 0
+      - uses: Boeing/validate-configs-action@v2
+        with:
+            only-changed: "true"
+```
+
+### Using outputs
+
+```yml
+jobs:
+  validate-config-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Boeing/validate-configs-action@v2
+        id: validate
+        continue-on-error: true
+      - run: |
+          echo "Files validated: ${{ steps.validate.outputs.files-validated }}"
+          echo "Files failed: ${{ steps.validate.outputs.files-failed }}"
+```
+
+## PR inline annotations
+
+Validation errors automatically appear as inline annotations on pull request diffs. When a config file fails validation, the action emits GitHub Actions workflow commands that annotate the exact file and line where the error occurred. For config types that do not support line numbers in the error output, an annotation will be added at line 1.
