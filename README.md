@@ -1,7 +1,5 @@
 # Validate Configs Github Action
 
-> [GitHub Action](https://github.com/features/actions) for [config-file-validator](https://github.com/Boeing/config-file-validator)
-
 <p>
   <a href="https://scorecard.dev/viewer/?uri=github.com/Boeing/validate-configs-action">
     <img src="https://api.scorecard.dev/projects/github.com/Boeing/validate-configs-action/badge" alt="OpenSSF Scorecard">
@@ -11,27 +9,9 @@
   </a>
 </p>
 
-Validate configuration files in your repository and get inline PR annotations for errors. Supports syntax validation and JSON Schema validation for 16 file formats.
+Validate every config file in your repo — JSON, YAML, TOML, XML, INI, HCL, and [more](#inputs). If something's wrong, you'll see the error right on the PR diff, exactly where it broke.
 
-## Supported File Types
-
-| Format | Syntax | Schema |
-|--------|:------:|:------:|
-| Apple PList XML | ✅ | |
-| CSV | ✅ | |
-| EDITORCONFIG | ✅ | |
-| ENV | ✅ | |
-| HCL | ✅ | |
-| HOCON | ✅ | |
-| INI | ✅ | |
-| JSON | ✅ | ✅ |
-| JSONC | ✅ | ✅ |
-| Properties | ✅ | |
-| SARIF | ✅ | ✅ |
-| TOML | ✅ | ✅ |
-| TOON | ✅ | ✅ |
-| XML | ✅ | ✅ |
-| YAML | ✅ | ✅ |
+Files with a schema declaration (JSON Schema, XSD) get validated against it automatically. You can optionally add [SchemaStore](#schemastore) to get schema validation for hundreds of common files like `package.json`, `tsconfig.json`, and GitHub Actions workflows with no additional configuration.
 
 ## Quick Start
 
@@ -39,11 +19,7 @@ Validate configuration files in your repository and get inline PR annotations fo
 - uses: Boeing/validate-configs-action@v2
 ```
 
-That's it. By default the action scans the entire repository for configuration files, validates them, and fails the workflow if any are invalid. Errors appear as inline annotations on the PR diff.
-
 ## Usage
-
-### Basic
 
 ```yaml
 jobs:
@@ -54,15 +30,7 @@ jobs:
       - uses: Boeing/validate-configs-action@v2
 ```
 
-### Validate specific paths
-
-```yaml
-- uses: Boeing/validate-configs-action@v2
-  with:
-    search-paths: ./configs ./deploy
-```
-
-### Validate only changed files in a PR
+### Only changed files
 
 ```yaml
 - uses: actions/checkout@v4
@@ -73,9 +41,9 @@ jobs:
     only-changed: "true"
 ```
 
-### Schema validation with SchemaStore
+### SchemaStore
 
-Automatically validate files against [SchemaStore](https://www.schemastore.org/) schemas (e.g. `package.json`, `tsconfig.json`, GitHub Actions workflows):
+Validate files against [SchemaStore](https://www.schemastore.org/) schemas (`package.json`, `tsconfig.json`, GitHub Actions workflows, etc.) with no configuration:
 
 ```yaml
 - uses: Boeing/validate-configs-action@v2
@@ -83,7 +51,7 @@ Automatically validate files against [SchemaStore](https://www.schemastore.org/)
     schemastore: "true"
 ```
 
-### Using outputs
+### Outputs
 
 ```yaml
 - uses: Boeing/validate-configs-action@v2
@@ -93,10 +61,6 @@ Automatically validate files against [SchemaStore](https://www.schemastore.org/)
     echo "Files validated: ${{ steps.validate.outputs.files-validated }}"
     echo "Files failed: ${{ steps.validate.outputs.files-failed }}"
 ```
-
-## PR Inline Annotations
-
-Validation errors automatically appear as inline annotations on pull request diffs. When a config file fails validation, the action emits GitHub Actions workflow commands that annotate the exact file and line where the error occurred. For config types that do not support line numbers in the error output, an annotation will be added at line 1.
 
 ## Inputs
 
