@@ -32,6 +32,8 @@ jobs:
 
 ### Only changed files
 
+For large repos, you probably don't want to validate everything on every PR. This only checks files that were actually changed:
+
 ```yaml
 - uses: actions/checkout@v4
   with:
@@ -41,9 +43,21 @@ jobs:
     only-changed: "true"
 ```
 
+`fetch-depth: 0` is required so git has the history to determine which files changed.
+
+### Exclude directories
+
+Skip directories you don't care about — vendored deps, test fixtures, generated files:
+
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    exclude-dirs: "vendor,testdata,node_modules"
+```
+
 ### SchemaStore
 
-Validate files against [SchemaStore](https://www.schemastore.org/) schemas (`package.json`, `tsconfig.json`, GitHub Actions workflows, etc.) with no configuration:
+[SchemaStore](https://www.schemastore.org/) is a community catalog of JSON Schemas for common config files. Turn it on and files like `package.json`, `tsconfig.json`, and GitHub Actions workflows get validated against their schema automatically — no `$schema` declarations needed in your files:
 
 ```yaml
 - uses: Boeing/validate-configs-action@v2
@@ -71,16 +85,16 @@ Validate files against [SchemaStore](https://www.schemastore.org/) schemas (`pac
 | `exclude-file-types` | `""` | Comma-separated list of file extensions to exclude |
 | `file-types` | `""` | Comma-separated list of file types to validate. Cannot be used with `exclude-file-types` |
 | `depth` | `""` | Recursion depth limit. `0` disables recursion |
-| `reporter` | `"standard"` | Report format(s). Options: `standard`, `json`, `junit`, `sarif`. Supports `type:path` for file output |
+| `reporter` | `"standard"` | Report format(s). Options: `standard`, `json`, `junit`, `sarif`. Supports `type:path` for file output. Multiple reporters can be comma-separated. If you only specify file reporters, add `standard` to keep console output |
 | `group-by` | `""` | Group output by `filetype`, `directory`, or `pass-fail` |
 | `quiet` | `"false"` | Suppress all output to stdout |
-| `globbing` | `"false"` | Enable glob pattern matching for search paths |
-| `require-schema` | `"false"` | Fail files that support schema validation but don't declare a schema |
-| `no-schema` | `"false"` | Disable all schema validation (syntax-only) |
+| `globbing` | `"false"` | Enable glob pattern matching for search paths. Cannot be used with `exclude-dirs`, `exclude-file-types`, or `file-types` |
+| `require-schema` | `"false"` | Fail files that support schema validation but don't declare a schema. Cannot be used with `no-schema` |
+| `no-schema` | `"false"` | Disable all schema validation (syntax-only). Cannot be used with `require-schema`, `schema-map`, or `schemastore` |
 | `schemastore` | `"false"` | Enable automatic schema lookup using the embedded [SchemaStore](https://www.schemastore.org/) catalog |
 | `schemastore-path` | `""` | Path to a local SchemaStore clone. For air-gapped environments. Implies `schemastore` |
-| `type-map` | `""` | Map glob patterns to file types. Format: `pattern:type` |
-| `schema-map` | `""` | Map glob patterns to schema files. Format: `pattern:schema_path` |
+| `type-map` | `""` | Map glob patterns to file types. Format: `pattern:type`. Valid types: `csv`, `editorconfig`, `env`, `hcl`, `hocon`, `ini`, `json`, `jsonc`, `plist`, `properties`, `sarif`, `toml`, `toon`, `xml`, `yaml` |
+| `schema-map` | `""` | Map glob patterns to schema files. Format: `pattern:schema_path`. Use JSON Schema (`.json`) for JSON/JSONC/YAML/TOML/TOON, XSD (`.xsd`) for XML. Paths are relative to the repo root |
 | `only-changed` | `"false"` | Only validate files changed in the current pull request |
 
 ## Outputs
@@ -224,6 +238,23 @@ Validate files against [SchemaStore](https://www.schemastore.org/) schemas (`pac
 
 <details>
 <summary><b>Advanced</b></summary>
+
+#### Combined options
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+- uses: Boeing/validate-configs-action@v2
+  id: validate
+  with:
+    only-changed: "true"
+    exclude-dirs: "vendor,generated,testdata"
+    schema-map: "**/app-config.json:schemas/app.schema.json,**/deploy.xml:schemas/deploy.xsd"
+    type-map: "**/inventory:ini,**/.env.*:env"
+    reporter: "standard,junit:results.xml"
+    schemastore: "true"
+```
 
 #### Map file types with glob patterns
 
