@@ -1,5 +1,7 @@
 # Validate Configs Github Action
 
+> [GitHub Action](https://github.com/features/actions) for [config-file-validator](https://github.com/Boeing/config-file-validator)
+
 <p>
   <a href="https://scorecard.dev/viewer/?uri=github.com/Boeing/validate-configs-action">
     <img src="https://api.scorecard.dev/projects/github.com/Boeing/validate-configs-action/badge" alt="OpenSSF Scorecard">
@@ -9,313 +11,284 @@
   </a>
 </p>
 
-:octocat: Github Action to validate your config files using the [config-file-validator](https://github.com/Boeing/config-file-validator). The config-file-validator will recursively scan the provided search path for the following configuration file types:
+Validate configuration files in your repository and get inline PR annotations for errors. Supports syntax validation and JSON Schema validation for 16 file formats.
 
-* Apple PList XML
-* CSV
-* EDITORCONFIG
-* ENV
-* HCL
-* HOCON
-* INI
-* JSONC
-* JSON
-* Properties
-* SARIF
-* TOML
-* TOON
-* XML
-* YAML
+## Supported File Types
 
-Each file will get validated for the correct syntax and the results collected into a report showing the path of the file and if it is invalid or valid. If the file is invalid an error will be displayed along with the line number and column where the error ocurred. By default the `$GITHUB_WORKDIR` is scanned.
+| Format | Syntax | Schema |
+|--------|:------:|:------:|
+| Apple PList XML | ✅ | |
+| CSV | ✅ | |
+| EDITORCONFIG | ✅ | |
+| ENV | ✅ | |
+| HCL | ✅ | |
+| HOCON | ✅ | |
+| INI | ✅ | |
+| JSON | ✅ | ✅ |
+| JSONC | ✅ | ✅ |
+| Properties | ✅ | |
+| SARIF | ✅ | ✅ |
+| TOML | ✅ | ✅ |
+| TOON | ✅ | ✅ |
+| XML | ✅ | ✅ |
+| YAML | ✅ | ✅ |
 
-Files that declare a schema (JSON Schema for JSON/YAML/TOML/TOON, XSD for XML) are automatically validated against it.
+## Quick Start
 
-## PR inline annotations
+```yaml
+- uses: Boeing/validate-configs-action@v2
+```
+
+That's it. By default the action scans the entire repository for configuration files, validates them, and fails the workflow if any are invalid. Errors appear as inline annotations on the PR diff.
+
+## Usage
+
+### Basic
+
+```yaml
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Boeing/validate-configs-action@v2
+```
+
+### Validate specific paths
+
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    search-paths: ./configs ./deploy
+```
+
+### Validate only changed files in a PR
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+- uses: Boeing/validate-configs-action@v2
+  with:
+    only-changed: "true"
+```
+
+### Schema validation with SchemaStore
+
+Automatically validate files against [SchemaStore](https://www.schemastore.org/) schemas (e.g. `package.json`, `tsconfig.json`, GitHub Actions workflows):
+
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    schemastore: "true"
+```
+
+### Using outputs
+
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  id: validate
+  continue-on-error: true
+- run: |
+    echo "Files validated: ${{ steps.validate.outputs.files-validated }}"
+    echo "Files failed: ${{ steps.validate.outputs.files-failed }}"
+```
+
+## PR Inline Annotations
 
 Validation errors automatically appear as inline annotations on pull request diffs. When a config file fails validation, the action emits GitHub Actions workflow commands that annotate the exact file and line where the error occurred. For config types that do not support line numbers in the error output, an annotation will be added at line 1.
 
 ## Inputs
 
-| Input              | Required | Default Value | Description |
-| ------------------ | -------- | ------------- | ----------- |
-| search-paths       | false    | `"."`         | The path that will be recursively searched for configuration files |
-| exclude-dirs       | false    | `""`          | A comma-separated list of subdirectories to exclude from validation |
-| exclude-file-types | false    | `""`          | A comma-separated list of file extensions to exclude |
-| file-types         | false    | `""`          | A comma-separated list of file types to validate. Cannot be used with exclude-file-types |
-| depth              | false    | `""`          | An integer value limiting the depth of recursion for the search paths. Setting depth to 0 disables recursion |
-| reporter           | false    | `"standard"`  | Comma-separated report formats with optional output paths. Format: `type:path`. Options are `standard`, `json`, `junit`, and `sarif` |
-| group-by           | false    | `""`          | Group output by `filetype`, `directory`, or `pass-fail` |
-| quiet              | false    | `"false"`     | If set to `true`, suppresses all output to stdout |
-| globbing           | false    | `"false"`     | If set to `true`, enables glob pattern matching for search paths |
-| require-schema     | false    | `"false"`     | If set to `true`, fail validation for files that support schema validation but do not declare a schema |
-| no-schema          | false    | `"false"`     | If set to `true`, disable all schema validation (syntax-only). Cannot be used with `require-schema`, `schema-map`, or `schemastore` |
-| schemastore        | false    | `"false"`     | If set to `true`, enables automatic schema lookup using the embedded SchemaStore catalog with remote fetching |
-| schemastore-path   | false    | `""`          | Path to a local SchemaStore clone for automatic schema lookup. For air-gapped environments. Implies `schemastore` |
-| type-map           | false    | `""`          | Comma-separated glob pattern to file type mappings. Format: `pattern:type` |
-| schema-map         | false    | `""`          | Comma-separated glob pattern to schema file mappings. Format: `pattern:schema_path` |
-| only-changed       | false    | `"false"`     | If set to `true`, only validate files changed in the current pull request |
-
+| Input | Default | Description |
+|-------|---------|-------------|
+| `search-paths` | `"."` | Space-separated list of directories or files to scan |
+| `exclude-dirs` | `""` | Comma-separated list of subdirectories to exclude |
+| `exclude-file-types` | `""` | Comma-separated list of file extensions to exclude |
+| `file-types` | `""` | Comma-separated list of file types to validate. Cannot be used with `exclude-file-types` |
+| `depth` | `""` | Recursion depth limit. `0` disables recursion |
+| `reporter` | `"standard"` | Report format(s). Options: `standard`, `json`, `junit`, `sarif`. Supports `type:path` for file output |
+| `group-by` | `""` | Group output by `filetype`, `directory`, or `pass-fail` |
+| `quiet` | `"false"` | Suppress all output to stdout |
+| `globbing` | `"false"` | Enable glob pattern matching for search paths |
+| `require-schema` | `"false"` | Fail files that support schema validation but don't declare a schema |
+| `no-schema` | `"false"` | Disable all schema validation (syntax-only) |
+| `schemastore` | `"false"` | Enable automatic schema lookup using the embedded [SchemaStore](https://www.schemastore.org/) catalog |
+| `schemastore-path` | `""` | Path to a local SchemaStore clone. For air-gapped environments. Implies `schemastore` |
+| `type-map` | `""` | Map glob patterns to file types. Format: `pattern:type` |
+| `schema-map` | `""` | Map glob patterns to schema files. Format: `pattern:schema_path` |
+| `only-changed` | `"false"` | Only validate files changed in the current pull request |
 
 ## Outputs
 
-| Output           | Description |
-| ---------------- | ----------- |
-| files-validated  | Total number of files scanned |
-| files-failed     | Number of files that failed validation |
-| exit-code        | Exit code from validation (0=success, 1=validation errors, 2=runtime error) |
+| Output | Description |
+|--------|-------------|
+| `files-validated` | Total number of files scanned |
+| `files-failed` | Number of files that failed validation |
+| `exit-code` | Exit code from validation (0=success, 1=validation errors, 2=runtime error) |
 
-## Example usage
+## Examples
 
-### Standard Run
+<details>
+<summary><b>Filtering</b></summary>
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
+#### Exclude directories
+
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    exclude-dirs: "tests,vendor,node_modules"
 ```
 
-### Custom search path
+#### Exclude file types
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            search-paths: ./project/configs
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    exclude-file-types: "json,xml"
 ```
 
-### Multiple search paths
+#### Include only specific file types
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            search-paths: ./project/configs ./project/devops
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    file-types: "json,yaml"
 ```
 
-### Exclude a directory
+#### Disable recursive scanning
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            exclude-dirs: "tests,vendor"
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    depth: 0
 ```
 
-### Exclude file type
+#### Glob pattern matching
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            exclude-file-types: "json,xml"
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    globbing: "true"
+    search-paths: "**/*.json"
 ```
 
-### Include only specific file types
+</details>
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            file-types: "json,yaml"
+<details>
+<summary><b>Reporters</b></summary>
+
+#### JSON report
+
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    reporter: "json"
 ```
 
-### Disable recursive scanning
+#### Multiple reporters with file output
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            depth: 0
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    reporter: "json:output.json,junit:results.xml,sarif:results.sarif"
 ```
 
-### JSON Report
+#### Group by pass/fail
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            reporter: "json"
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    group-by: "pass-fail"
 ```
 
-### Multiple reporters with output files
+#### Quiet mode
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            reporter: "json:output.json,junit:results.xml"
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    quiet: "true"
 ```
 
-### Group By Pass/Fail
+</details>
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            group-by: "pass-fail"
+<details>
+<summary><b>Schema Validation</b></summary>
+
+#### Automatic schema lookup with SchemaStore
+
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    schemastore: "true"
 ```
 
-### Quiet mode
+#### Local SchemaStore clone (air-gapped)
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            quiet: "true"
+```yaml
+- run: git clone --depth=1 https://github.com/SchemaStore/schemastore.git
+- uses: Boeing/validate-configs-action@v2
+  with:
+    schemastore-path: "./schemastore"
 ```
 
-### Glob pattern matching
+#### Require schema declarations
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            globbing: "true"
-            search-paths: "**/*.json"
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    require-schema: "true"
 ```
 
-### Require schema declarations
+#### Disable schema validation
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            require-schema: "true"
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    no-schema: "true"
 ```
 
-### Disable schema validation
+#### Map schemas to files
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            no-schema: "true"
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    schema-map: "**/package.json:schemas/package.schema.json,**/config.xml:schemas/config.xsd"
 ```
 
-### Automatic schema lookup with SchemaStore
+</details>
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            schemastore: "true"
+<details>
+<summary><b>Advanced</b></summary>
+
+#### Map file types with glob patterns
+
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  with:
+    type-map: "**/inventory:ini,**/*.cfg:json"
 ```
 
-### Automatic schema lookup with local SchemaStore clone
+#### Validate only changed files in a PR
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: git clone --depth=1 https://github.com/SchemaStore/schemastore.git
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            schemastore-path: "./schemastore"
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+- uses: Boeing/validate-configs-action@v2
+  with:
+    only-changed: "true"
 ```
 
-### Map file types with glob patterns
+#### Using outputs
 
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            type-map: "**/inventory:ini,**/*.cfg:json"
+```yaml
+- uses: Boeing/validate-configs-action@v2
+  id: validate
+  continue-on-error: true
+- run: |
+    echo "Files validated: ${{ steps.validate.outputs.files-validated }}"
+    echo "Files failed: ${{ steps.validate.outputs.files-failed }}"
 ```
 
-### Map schemas to files
-
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            schema-map: "**/package.json:schemas/package.schema.json,**/config.xml:schemas/config.xsd"
-```
-
-
-### Validate only changed files in a PR
-
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-            fetch-depth: 0
-      - uses: Boeing/validate-configs-action@v2
-        with:
-            only-changed: "true"
-```
-
-### Using outputs
-
-```yml
-jobs:
-  validate-config-files:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Boeing/validate-configs-action@v2
-        id: validate
-        continue-on-error: true
-      - run: |
-          echo "Files validated: ${{ steps.validate.outputs.files-validated }}"
-          echo "Files failed: ${{ steps.validate.outputs.files-failed }}"
-```
-
-## PR inline annotations
-
-Validation errors automatically appear as inline annotations on pull request diffs. When a config file fails validation, the action emits GitHub Actions workflow commands that annotate the exact file and line where the error occurred. For config types that do not support line numbers in the error output, an annotation will be added at line 1.
+</details>
