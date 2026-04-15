@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -22,7 +24,6 @@ var (
 	reColNum  = regexp.MustCompile(`column (\d+)`)
 )
 
-// captureReporter captures reports for annotation processing
 type captureReporter struct {
 	reports []reporter.Report
 }
@@ -48,9 +49,11 @@ func run() int {
 	globbing := os.Args[9]
 	requireSchema := os.Args[10]
 	noSchema := os.Args[11]
-	schemaStorePath := os.Args[12]
-	typeMap := os.Args[13]
-	schemaMap := os.Args[14]
+	schemaStoreEnabled := os.Args[12]
+	schemaStorePath := os.Args[13]
+	typeMap := os.Args[14]
+	schemaMap := os.Args[15]
+	onlyChanged := os.Args[16]
 
 	// Build finder options
 	var fsOpts []finder.FSFinderOptions
@@ -63,7 +66,7 @@ func run() int {
 		expanded, err := expandGlobs(paths)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error expanding globs: %v\n", err)
-			return 1
+			return 2
 		}
 		paths = expanded
 	}
@@ -104,7 +107,7 @@ func run() int {
 		overrides, err := parseTypeMap(typeMap)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error parsing type-map: %v\n", err)
-			return 1
+			return 2
 		}
 		fsOpts = append(fsOpts, finder.WithTypeOverrides(overrides))
 	}
@@ -112,7 +115,19 @@ func run() int {
 	// Build CLI options
 	var cliOpts []cli.Option
 
-	fileFinder := finder.FileSystemFinderInit(fsOpts...)
+	var fileFinder finder.FileFinder
+	fileFinder = finder.FileSystemFinderInit(fsOpts...)
+
+	// Filter to only changed files if requested
+	if onlyChanged == "true" {
+		changed, err := getChangedFiles()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not determine changed files: %v\n", err)
+		} else if len(changed) > 0 {
+			fileFinder = &changedFilesFilter{inner: fileFinder, changed: changed}
+		}
+	}
+
 	cliOpts = append(cliOpts, cli.WithFinder(fileFinder))
 
 	if quiet == "true" {
@@ -131,7 +146,7 @@ func run() int {
 		sm, err := parseSchemaMap(schemaMap)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error parsing schema-map: %v\n", err)
-			return 1
+			return 2
 		}
 		cliOpts = append(cliOpts, cli.WithSchemaMap(sm))
 	}
@@ -139,12 +154,18 @@ func run() int {
 		store, err := schemastore.Open(schemaStorePath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error opening schemastore: %v\n", err)
-			return 1
+			return 2
+		}
+		cliOpts = append(cliOpts, cli.WithSchemaStore(store))
+	} else if schemaStoreEnabled == "true" {
+		store, err := schemastore.OpenEmbedded()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error opening embedded schemastore: %v\n", err)
+			return 2
 		}
 		cliOpts = append(cliOpts, cli.WithSchemaStore(store))
 	}
 
-	// Build reporters — user-specified plus a capture reporter for annotations
 	capture := &captureReporter{}
 	reporters := buildReporters(reporterArg)
 	reporters = append(reporters, capture)
@@ -157,8 +178,160 @@ func run() int {
 	}
 
 	emitAnnotations(capture.reports)
+	emitNotes(capture.reports)
+	writeOutputs(capture.reports, exitStatus)
+	writeJobSummary(capture.reports)
 
 	return exitStatus
+}
+
+// changedFilesFilter wraps a FileFinder and filters results to only changed files.
+type changedFilesFilter struct {
+	inner   finder.FileFinder
+	changed map[string]struct{}
+}
+
+func (f *changedFilesFilter) Find() ([]finder.FileMetadata, error) {
+	all, err := f.inner.Find()
+	if err != nil {
+		return nil, err
+	}
+	var filtered []finder.FileMetadata
+	for _, file := range all {
+		rel := file.Path
+		if abs, err := filepath.Abs(file.Path); err == nil {
+			if wd, err := os.Getwd(); err == nil {
+				if r, err := filepath.Rel(wd, abs); err == nil {
+					rel = r
+				}
+			}
+		}
+		if _, ok := f.changed[rel]; ok {
+			filtered = append(filtered, file)
+		}
+	}
+	return filtered, nil
+}
+
+func getChangedFiles() (map[string]struct{}, error) {
+	baseBranch := os.Getenv("GITHUB_BASE_REF")
+	if baseBranch == "" {
+		return nil, fmt.Errorf("GITHUB_BASE_REF not set (not a pull request?)")
+	}
+
+	// Docker containers run as root but the workspace is owned by the runner user
+	safe := exec.Command("git", "config", "--global", "--add", "safe.directory", "/github/workspace")
+	safe.Run()
+
+	fetch := exec.Command("git", "fetch", "origin", baseBranch, "--depth=1")
+	fetch.Stderr = os.Stderr
+	if err := fetch.Run(); err != nil {
+		return nil, fmt.Errorf("git fetch: %w", err)
+	}
+
+	cmd := exec.Command("git", "diff", "--name-only", "origin/"+baseBranch+"...HEAD")
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("git diff: %w", err)
+	}
+
+	changed := make(map[string]struct{})
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line != "" {
+			changed[line] = struct{}{}
+		}
+	}
+	return changed, nil
+}
+
+func writeOutputs(reports []reporter.Report, exitCode int) {
+	outputFile := os.Getenv("GITHUB_OUTPUT")
+	if outputFile == "" {
+		return
+	}
+
+	total := len(reports)
+	failed := 0
+	for _, r := range reports {
+		if !r.IsValid {
+			failed++
+		}
+	}
+
+	f, err := os.OpenFile(outputFile, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	fmt.Fprintf(f, "files-validated=%d\n", total)
+	fmt.Fprintf(f, "files-failed=%d\n", failed)
+	fmt.Fprintf(f, "exit-code=%d\n", exitCode)
+}
+
+func writeJobSummary(reports []reporter.Report) {
+	summaryFile := os.Getenv("GITHUB_STEP_SUMMARY")
+	if summaryFile == "" {
+		return
+	}
+
+	total := len(reports)
+	passed := 0
+	failed := 0
+	var failedReports []reporter.Report
+	for _, r := range reports {
+		if r.IsValid {
+			passed++
+		} else {
+			failed++
+			failedReports = append(failedReports, r)
+		}
+	}
+
+	f, err := os.OpenFile(summaryFile, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	if failed == 0 {
+		fmt.Fprintf(f, "### ✅ Config Validation Passed\n\n")
+		fmt.Fprintf(f, "All **%d** configuration files are valid.\n", total)
+		return
+	}
+
+	fmt.Fprintf(f, "### ❌ Config Validation Failed\n\n")
+	fmt.Fprintf(f, "| | Count |\n|---|---|\n")
+	fmt.Fprintf(f, "| ✅ Passed | %d |\n", passed)
+	fmt.Fprintf(f, "| ❌ Failed | %d |\n", failed)
+	fmt.Fprintf(f, "| **Total** | **%d** |\n\n", total)
+
+	fmt.Fprintf(f, "#### Failed Files\n\n")
+	fmt.Fprintf(f, "| File | Errors |\n|---|---|\n")
+	for _, r := range failedReports {
+		path := r.FilePath
+		if strings.HasPrefix(path, "/github/workspace/") {
+			path = path[len("/github/workspace/"):]
+		}
+		errors := strings.Join(r.ValidationErrors, "<br>")
+		fmt.Fprintf(f, "| `%s` | %s |\n", path, errors)
+	}
+}
+
+func emitNotes(reports []reporter.Report) {
+	const workspacePrefix = "/github/workspace/"
+	for _, r := range reports {
+		if len(r.Notes) == 0 {
+			continue
+		}
+		path := r.FilePath
+		if strings.HasPrefix(path, workspacePrefix) {
+			path = path[len(workspacePrefix):]
+		}
+		for _, note := range r.Notes {
+			fmt.Printf("::notice file=%s,title=Note::%s\n", path, escapeAnnotation(note))
+		}
+	}
 }
 
 func buildReporters(arg string) []reporter.Reporter {
