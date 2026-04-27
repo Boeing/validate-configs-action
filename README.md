@@ -96,6 +96,7 @@ Skip directories you don't care about — vendored deps, test fixtures, generate
 | `type-map` | `""` | Map glob patterns to file types. Format: `pattern:type`. Valid types: `csv`, `editorconfig`, `env`, `hcl`, `hocon`, `ini`, `json`, `jsonc`, `plist`, `properties`, `sarif`, `toml`, `toon`, `xml`, `yaml` |
 | `schema-map` | `""` | Map glob patterns to schema files. Format: `pattern:schema_path`. Use JSON Schema (`.json`) for JSON/JSONC/YAML/TOML/TOON, XSD (`.xsd`) for XML. Paths are relative to the repo root |
 | `only-changed` | `"false"` | Only validate files changed in the current pull request |
+| `gitignore` | `"false"` | Skip files and directories matched by `.gitignore` patterns |
 
 ## Outputs
 
