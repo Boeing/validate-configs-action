@@ -53,7 +53,8 @@ func run() int {
 	schemaStorePath := os.Args[13]
 	typeMap := os.Args[14]
 	schemaMap := os.Args[15]
-	onlyChanged := os.Args[16]
+	gitignoreEnabled := os.Args[16]
+	onlyChanged := os.Args[17]
 
 	// Build finder options
 	var fsOpts []finder.FSFinderOptions
@@ -110,6 +111,10 @@ func run() int {
 			return 2
 		}
 		fsOpts = append(fsOpts, finder.WithTypeOverrides(overrides))
+	}
+
+	if gitignoreEnabled == "true" {
+		fsOpts = append(fsOpts, finder.WithGitignore(true))
 	}
 
 	// Build CLI options
@@ -451,7 +456,7 @@ func emitAnnotations(reports []reporter.Report) {
 			path = path[len(workspacePrefix):]
 		}
 
-		for _, errMsg := range r.ValidationErrors {
+		for i, errMsg := range r.ValidationErrors {
 			title := "Validation Error"
 			msg := errMsg
 			if strings.HasPrefix(errMsg, "schema: ") {
@@ -462,7 +467,19 @@ func emitAnnotations(reports []reporter.Report) {
 				msg = errMsg[8:]
 			}
 
-			line, col := parseLine(msg)
+			// Use per-error positions from report when available,
+			// fall back to regex parsing for compatibility.
+			var line, col int
+			if i < len(r.ErrorLines) && r.ErrorLines[i] > 0 {
+				line = r.ErrorLines[i]
+			}
+			if i < len(r.ErrorColumns) && r.ErrorColumns[i] > 0 {
+				col = r.ErrorColumns[i]
+			}
+			if line == 0 {
+				line, col = parseLine(msg)
+			}
+
 			key := fmt.Sprintf("%s|%d|%d|%s", path, line, col, title)
 			if a, ok := groups[key]; ok {
 				a.msgs = append(a.msgs, msg)

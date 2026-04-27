@@ -64,6 +64,10 @@ inputs:
     description: 'Comma separated list of glob pattern to schema file mappings. Format: pattern:schema_path. Example: "**/package.json:schemas/pkg.json,**/config.xml:schemas/config.xsd"'
     required: false
     default: ""
+  gitignore:
+    description: 'If set to true, skip files and directories matched by .gitignore patterns'
+    required: false
+    default: "false"
   only-changed:
     description: 'If set to true, only validate files changed in the current pull request'
     required: false
@@ -96,6 +100,7 @@ runs:
     - ${{ inputs.schemastore-path }}
     - ${{ inputs.type-map }}
     - ${{ inputs.schema-map }}
+    - ${{ inputs.gitignore }}
     - ${{ inputs.only-changed }}
 
 branding:
