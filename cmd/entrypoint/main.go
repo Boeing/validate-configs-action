@@ -54,7 +54,8 @@ func run() int {
 	typeMap := os.Args[14]
 	schemaMap := os.Args[15]
 	gitignoreEnabled := os.Args[16]
-	onlyChanged := os.Args[17]
+	ignoreFiles := os.Args[17]
+	onlyChanged := os.Args[18]
 
 	// Build finder options
 	var fsOpts []finder.FSFinderOptions
@@ -115,6 +116,10 @@ func run() int {
 
 	if gitignoreEnabled == "true" {
 		fsOpts = append(fsOpts, finder.WithGitignore(true))
+	}
+
+	if ignoreFiles != "" {
+		fsOpts = append(fsOpts, finder.WithIgnoreFiles(strings.Split(ignoreFiles, ",")))
 	}
 
 	// Build CLI options
@@ -358,6 +363,8 @@ func buildReporters(arg string) []reporter.Reporter {
 			reporters = append(reporters, reporter.NewJunitReporter(dest))
 		case "sarif":
 			reporters = append(reporters, reporter.NewSARIFReporter(dest))
+		case "github":
+			reporters = append(reporters, reporter.NewGitHubReporter(dest))
 		default:
 			reporters = append(reporters, reporter.NewStdoutReporter(dest))
 		}

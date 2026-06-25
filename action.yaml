@@ -25,7 +25,7 @@ inputs:
     required: false
     default: ""
   reporter:
-    description: 'Comma separated list of report formats with optional output paths. Format: type:path. Options are standard, json, junit, sarif (default "standard")'
+    description: 'Comma separated list of report formats with optional output paths. Format: type:path. Options are standard, json, junit, sarif, github (default "standard")'
     required: false
     default: "standard"
   group-by:
@@ -68,6 +68,10 @@ inputs:
     description: 'If set to true, skip files and directories matched by .gitignore patterns'
     required: false
     default: "false"
+  ignore-files:
+    description: 'Comma-separated list of gitignore-style pattern files to skip during file discovery. Example: ".dockerignore,.prettierignore"'
+    required: false
+    default: ""
   only-changed:
     description: 'If set to true, only validate files changed in the current pull request'
     required: false
@@ -101,6 +105,7 @@ runs:
     - ${{ inputs.type-map }}
     - ${{ inputs.schema-map }}
     - ${{ inputs.gitignore }}
+    - ${{ inputs.ignore-files }}
     - ${{ inputs.only-changed }}
 
 branding:
