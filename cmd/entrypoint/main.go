@@ -12,7 +12,6 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 
 	"github.com/Boeing/config-file-validator/v2/pkg/cli"
-	"github.com/Boeing/config-file-validator/v2/pkg/configfile"
 	"github.com/Boeing/config-file-validator/v2/pkg/filetype"
 	"github.com/Boeing/config-file-validator/v2/pkg/finder"
 	"github.com/Boeing/config-file-validator/v2/pkg/reporter"
@@ -57,62 +56,6 @@ func run() int {
 	gitignoreEnabled := os.Args[16]
 	ignoreFiles := os.Args[17]
 	onlyChanged := os.Args[18]
-
-	// Load .cfv.toml if present (action inputs override config file values)
-	if cfgPath := configfile.Discover("."); cfgPath != "" {
-		if cfg, err := configfile.Load(cfgPath); err == nil {
-			if excludeDirs == "" && len(cfg.ExcludeDirs) > 0 {
-				excludeDirs = strings.Join(cfg.ExcludeDirs, ",")
-			}
-			if excludeFileTypes == "" && len(cfg.ExcludeFileTypes) > 0 {
-				excludeFileTypes = strings.Join(cfg.ExcludeFileTypes, ",")
-			}
-			if fileTypes == "" && len(cfg.FileTypes) > 0 {
-				fileTypes = strings.Join(cfg.FileTypes, ",")
-			}
-			if depth == "" && cfg.Depth != nil {
-				depth = strconv.Itoa(*cfg.Depth)
-			}
-			if groupBy == "" && len(cfg.GroupBy) > 0 {
-				groupBy = strings.Join(cfg.GroupBy, ",")
-			}
-			if quiet == "false" && cfg.Quiet != nil && *cfg.Quiet {
-				quiet = "true"
-			}
-			if requireSchema == "false" && cfg.RequireSchema != nil && *cfg.RequireSchema {
-				requireSchema = "true"
-			}
-			if noSchema == "false" && cfg.NoSchema != nil && *cfg.NoSchema {
-				noSchema = "true"
-			}
-			if schemaStoreEnabled == "false" && cfg.SchemaStore != nil && *cfg.SchemaStore {
-				schemaStoreEnabled = "true"
-			}
-			if schemaStorePath == "" && cfg.SchemaStorePath != nil {
-				schemaStorePath = *cfg.SchemaStorePath
-			}
-			if gitignoreEnabled == "false" && cfg.Gitignore != nil && *cfg.Gitignore {
-				gitignoreEnabled = "true"
-			}
-			if ignoreFiles == "" && len(cfg.IgnoreFiles) > 0 {
-				ignoreFiles = strings.Join(cfg.IgnoreFiles, ",")
-			}
-			if typeMap == "" && len(cfg.TypeMap) > 0 {
-				var parts []string
-				for pattern, ft := range cfg.TypeMap {
-					parts = append(parts, pattern+":"+ft)
-				}
-				typeMap = strings.Join(parts, ",")
-			}
-			if schemaMap == "" && len(cfg.SchemaMap) > 0 {
-				var parts []string
-				for pattern, schema := range cfg.SchemaMap {
-					parts = append(parts, pattern+":"+schema)
-				}
-				schemaMap = strings.Join(parts, ",")
-			}
-		}
-	}
 
 	// Build finder options
 	var fsOpts []finder.FSFinderOptions
