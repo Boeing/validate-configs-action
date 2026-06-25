@@ -34,7 +34,7 @@ jobs:
 
 ### Only validate changed files
 
-If you've got a big repo, you probably don't want to re-validate the world on every PR:
+If you've got a big repo, you probably don't want to validate everything on every PR:
 
 ```yaml
 - uses: actions/checkout@v4
