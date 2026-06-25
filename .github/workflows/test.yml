@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - uses: ./
         with:
-          search-paths: test/good.json test/good.yaml test/good.toml test/good.xml test/good.ini
+          search-paths: test/good.json test/good.yaml test/good.toml test/good.xml test/good.ini test/justfile test/good.kdl
 
   # Validate that bad files cause a non-zero exit
   test-failing-files:
@@ -206,3 +206,128 @@ jobs:
             echo "Expected validation to fail when schema is required but not declared"
             exit 1
           fi
+
+  # Embedded schemastore with remote fetching
+  test-schemastore:
+    name: "Test: schemastore (embedded)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test/good.json
+          schemastore: "true"
+
+  # Validate only changed files
+  test-only-changed:
+    name: "Test: only-changed"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
+      - uses: ./
+        with:
+          only-changed: "true"
+          exclude-dirs: "failing"
+
+  # Verify outputs are set
+  test-outputs:
+    name: "Test: outputs"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        id: validate
+        with:
+          search-paths: test/good.json
+      - name: Verify outputs
+        run: |
+          if [ -z "${{ steps.validate.outputs.files-validated }}" ]; then
+            echo "Missing files-validated output"
+            exit 1
+          fi
+          echo "files-validated=${{ steps.validate.outputs.files-validated }}"
+          echo "files-failed=${{ steps.validate.outputs.files-failed }}"
+          echo "exit-code=${{ steps.validate.outputs.exit-code }}"
+
+  # KDL file validation
+  test-kdl:
+    name: "Test: KDL files"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test/good.kdl
+
+  # KDL bad file should fail
+  test-kdl-failing:
+    name: "Test: KDL invalid file"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        id: validate
+        continue-on-error: true
+        with:
+          search-paths: test/failing/bad.kdl
+      - name: Assert failure
+        run: |
+          if [ "${{ steps.validate.outcome }}" != "failure" ]; then
+            echo "Expected KDL validation to fail"
+            exit 1
+          fi
+
+  # ignore-files input
+  test-ignore-files:
+    name: "Test: ignore-files"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test
+          ignore-files: ".testignore"
+
+  # gitignore input
+  test-gitignore:
+    name: "Test: gitignore"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - run: echo "failing/" >> test/.gitignore
+      - uses: ./
+        with:
+          search-paths: test
+          gitignore: "true"
+
+  # Broken symlinks should be reported as failures
+  test-broken-symlink:
+    name: "Test: broken symlink"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        id: validate
+        continue-on-error: true
+        with:
+          search-paths: test/failing/broken-symlink.json
+      - name: Assert failure
+        run: |
+          if [ "${{ steps.validate.outcome }}" != "failure" ]; then
+            echo "Expected broken symlink to fail validation"
+            exit 1
+          fi
+
+  # SARIF reporter standalone
+  test-reporter-sarif:
+    name: "Test: SARIF reporter"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test/good.json test/good.yaml
+          reporter: "sarif"
