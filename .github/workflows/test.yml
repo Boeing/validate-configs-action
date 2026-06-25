@@ -230,6 +230,7 @@ jobs:
       - uses: ./
         with:
           only-changed: "true"
+          exclude-dirs: "failing"
 
   # Verify outputs are set
   test-outputs:
@@ -288,7 +289,7 @@ jobs:
       - uses: ./
         with:
           search-paths: test
-          ignore-files: "test/.testignore"
+          ignore-files: ".testignore"
 
   # gitignore input
   test-gitignore:
@@ -296,7 +297,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-      - run: echo "test/failing/" >> .gitignore
+      - run: echo "failing/" >> test/.gitignore
       - uses: ./
         with:
           search-paths: test
