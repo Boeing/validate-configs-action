@@ -11,7 +11,7 @@
 
 A GitHub Action that catches broken config files in your PRs before they cause problems. Supports JSON, YAML, TOML, XML, INI, HCL, JSONC, KDL, Justfiles, and a bunch more. Errors show up as inline annotations on the PR diff so you know exactly what broke and where.
 
-If a file declares a schema (`$schema`, XSD, etc.), it gets validated against it automatically. You can also turn on [SchemaStore](#schemastore) to get schema validation for hundreds of common files — `package.json`, `tsconfig.json`, GitHub Actions workflows — without adding `$schema` to anything.
+If a file has a `$schema` or XSD declaration, it gets schema-validated too. You can also enable [SchemaStore](#schemastore) for automatic schema lookups on common files like `package.json` and `tsconfig.json`.
 
 ## Quick Start
 
@@ -19,7 +19,7 @@ If a file declares a schema (`$schema`, XSD, etc.), it gets validated against it
 - uses: Boeing/validate-configs-action@v2
 ```
 
-That's it. Add it to a job with `actions/checkout` and it'll scan everything in the repo.
+Add it to any job with `actions/checkout` and it'll validate every config file in the repo.
 
 ## Usage
 
