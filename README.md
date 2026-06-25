@@ -32,6 +32,20 @@ jobs:
       - uses: Boeing/validate-configs-action@v2
 ```
 
+Alternatively, you can add a `.cfv.toml` file to your repo instead of using flags:
+
+```toml
+# .cfv.toml
+exclude-dirs = ["vendor", "node_modules"]
+gitignore = true
+schemastore = true
+
+[schema-map]
+"**/app-config.json" = "schemas/app.schema.json"
+```
+
+See the [config file docs](https://boeing.github.io/config-file-validator/docs/usage/config-file) for all available options. Action inputs override config file values when both are set.
+
 ### Only validate changed files
 
 If you've got a big repo, you probably don't want to validate everything on every PR:

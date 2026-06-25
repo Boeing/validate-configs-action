@@ -331,3 +331,13 @@ jobs:
         with:
           search-paths: test/good.json test/good.yaml
           reporter: "sarif"
+
+  # .cfv.toml config file support
+  test-config-file:
+    name: "Test: .cfv.toml config file"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: ./
+        with:
+          search-paths: test
