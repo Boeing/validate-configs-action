@@ -355,15 +355,22 @@ jobs:
       - uses: ./
         id: validate
         with:
-          search-paths: test/good.json
+          search-paths: test/format/formatted.json
+          format-check: "off"
+          schemastore: "false"
       - name: Verify outputs
         run: |
           if [ -z "${{ steps.validate.outputs.files-validated }}" ]; then
             echo "Missing files-validated output"
             exit 1
           fi
+          if [ -z "${{ steps.validate.outputs.files-unformatted }}" ]; then
+            echo "Missing files-unformatted output"
+            exit 1
+          fi
           echo "files-validated=${{ steps.validate.outputs.files-validated }}"
           echo "files-failed=${{ steps.validate.outputs.files-failed }}"
+          echo "files-unformatted=${{ steps.validate.outputs.files-unformatted }}"
           echo "exit-code=${{ steps.validate.outputs.exit-code }}"
 
   # KDL file validation
@@ -481,3 +488,326 @@ jobs:
         with:
           search-paths: test/good.json test/good.yaml
           reporter: "sarif"
+
+  # ---------------------------------------------------------------------------
+  # v3 Feature Tests (uses: ./ — clean-passing only, no PR annotation noise)
+  # ---------------------------------------------------------------------------
+
+  # Format check: default mode is warn — unformatted file passes (exit 0)
+  # Note: uses format-check=off on the action, then runs binary directly to
+  # verify warn behavior without emitting annotations on the PR.
+  test-format-check-pass:
+    name: "Test: format-check pass (formatted file, strict)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        with:
+          go-version-file: go.mod
+      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - name: Build binary
+        run: just build
+      - uses: ./
+        with:
+          search-paths: test/format/formatted.json
+          format-check: "strict"
+          schemastore: "false"
+
+  # Format check off — unformatted file still passes
+  test-format-check-off:
+    name: "Test: format-check off"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        with:
+          go-version-file: go.mod
+      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - name: Build binary
+        run: just build
+      - uses: ./
+        with:
+          search-paths: test/format/unformatted.json
+          format-check: "off"
+          schemastore: "false"
+
+  # SchemaStore on by default (no explicit schemastore input)
+  test-schemastore-default:
+    name: "Test: schemastore on by default"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        with:
+          go-version-file: go.mod
+      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - name: Build binary
+        run: just build
+      - uses: ./
+        with:
+          search-paths: test/format/formatted.json
+          format-check: "off"
+
+  # no-config with formatted file
+  test-no-config:
+    name: "Test: no-config"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        with:
+          go-version-file: go.mod
+      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - name: Build binary
+        run: just build
+      - uses: ./
+        with:
+          search-paths: test/format/formatted.json
+          no-config: "true"
+          format-check: "strict"
+          schemastore: "false"
+
+  # .cfv.toml config file — Tier 1 format resolution
+  test-cfv-toml-config:
+    name: "Test: .cfv.toml config file"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        with:
+          go-version-file: go.mod
+      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - name: Build binary
+        run: just build
+      - name: Create .cfv.toml with 4-space indent
+        run: |
+          cat > test/format/.cfv.toml << 'EOF'
+          [format]
+          indent = 4
+          EOF
+      - uses: ./
+        with:
+          search-paths: test/format/unformatted.json
+          config: "test/format/.cfv.toml"
+          format-check: "strict"
+          schemastore: "false"
+        # unformatted.json uses 4-space indent. With .cfv.toml setting indent=4,
+        # it should PASS format check.
+      - name: Cleanup
+        if: always()
+        run: rm -f test/format/.cfv.toml
+
+  # v3 outputs: all four outputs set correctly
+  test-outputs-v3:
+    name: "Test: v3 outputs (validated, failed, unformatted, exit-code)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        with:
+          go-version-file: go.mod
+      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - name: Build binary
+        run: just build
+      - uses: ./
+        id: validate
+        with:
+          search-paths: test/format/formatted.json
+          format-check: "off"
+          schemastore: "false"
+      - name: Verify all four outputs
+        run: |
+          echo "files-validated=${{ steps.validate.outputs.files-validated }}"
+          echo "files-failed=${{ steps.validate.outputs.files-failed }}"
+          echo "files-unformatted=${{ steps.validate.outputs.files-unformatted }}"
+          echo "exit-code=${{ steps.validate.outputs.exit-code }}"
+          test "${{ steps.validate.outputs.files-validated }}" = "1" || { echo "FAIL: files-validated"; exit 1; }
+          test "${{ steps.validate.outputs.files-failed }}" = "0" || { echo "FAIL: files-failed"; exit 1; }
+          test "${{ steps.validate.outputs.files-unformatted }}" = "0" || { echo "FAIL: files-unformatted"; exit 1; }
+          test "${{ steps.validate.outputs.exit-code }}" = "0" || { echo "FAIL: exit-code"; exit 1; }
+
+  # macOS runner — proves composite action works on macOS
+  test-macos:
+    name: "Test: macOS runner"
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        with:
+          go-version-file: go.mod
+      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - name: Build binary
+        run: just build
+      - uses: ./
+        with:
+          search-paths: test/format/formatted.json
+          format-check: "off"
+          schemastore: "false"
+
+  # ---------------------------------------------------------------------------
+  # Adversarial / Stress Tests (runs binary directly — no PR annotation noise)
+  # ---------------------------------------------------------------------------
+
+  test-adversarial:
+    name: "Test: adversarial / stress"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        with:
+          go-version-file: go.mod
+      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - name: Build binary
+        run: just build
+
+      - name: "Stress: warn mode emits ::warning not ::error"
+        run: |
+          set +e
+          OUTPUT=$(INPUT_SEARCH_PATHS="test/format/unformatted.json" INPUT_FORMAT_CHECK="warn" INPUT_SCHEMASTORE="false" ./bin/entrypoint 2>&1)
+          EXIT=$?; set -e
+          echo "$OUTPUT"
+          if [ "$EXIT" != "0" ]; then echo "FAIL: expected exit 0 in warn mode, got $EXIT"; exit 1; fi
+          if echo "$OUTPUT" | grep -q "::error"; then echo "FAIL: warn mode should not emit ::error for format issues"; exit 1; fi
+          if ! echo "$OUTPUT" | grep -q "::warning"; then echo "FAIL: warn mode should emit ::warning"; exit 1; fi
+
+      - name: "Stress: strict mode emits ::error"
+        run: |
+          set +e
+          OUTPUT=$(INPUT_SEARCH_PATHS="test/format/unformatted.json" INPUT_FORMAT_CHECK="strict" INPUT_SCHEMASTORE="false" ./bin/entrypoint 2>&1)
+          EXIT=$?; set -e
+          echo "$OUTPUT"
+          if [ "$EXIT" != "1" ]; then echo "FAIL: expected exit 1 in strict mode, got $EXIT"; exit 1; fi
+          if ! echo "$OUTPUT" | grep -q "::error"; then echo "FAIL: strict mode should emit ::error"; exit 1; fi
+
+      - name: "Stress: syntax error + strict format — syntax wins"
+        run: |
+          set +e
+          OUTPUT=$(INPUT_SEARCH_PATHS="test/failing/bad.json" INPUT_FORMAT_CHECK="strict" INPUT_SCHEMASTORE="false" ./bin/entrypoint 2>&1)
+          EXIT=$?; set -e
+          echo "$OUTPUT"
+          if [ "$EXIT" != "1" ]; then echo "FAIL: expected exit 1, got $EXIT"; exit 1; fi
+          if echo "$OUTPUT" | grep -q "not formatted"; then echo "FAIL: syntax error should skip format check"; exit 1; fi
+
+      - name: "Stress: invalid format-check value"
+        run: |
+          set +e
+          OUTPUT=$(INPUT_FORMAT_CHECK="banana" INPUT_SEARCH_PATHS="test/good.json" ./bin/entrypoint 2>&1)
+          EXIT=$?; set -e
+          echo "$OUTPUT"
+          if [ "$EXIT" != "2" ]; then echo "FAIL: expected exit 2, got $EXIT"; exit 1; fi
+          if ! echo "$OUTPUT" | grep -q 'invalid format-check'; then echo "FAIL: expected error message"; exit 1; fi
+
+      - name: "Stress: fail + unformatted in warn — fail wins"
+        run: |
+          set +e
+          OUTPUT=$(INPUT_SEARCH_PATHS="test/failing/bad.json test/format/unformatted.json" INPUT_FORMAT_CHECK="warn" INPUT_SCHEMASTORE="false" ./bin/entrypoint 2>&1)
+          EXIT=$?; set -e
+          echo "$OUTPUT"
+          if [ "$EXIT" != "1" ]; then echo "FAIL: expected exit 1 (syntax error present), got $EXIT"; exit 1; fi
+
+      - name: "Stress: all unformatted + warn = exit 0 (override)"
+        run: |
+          GITHUB_OUTPUT=$(mktemp); export GITHUB_OUTPUT
+          set +e
+          OUTPUT=$(INPUT_SEARCH_PATHS="test/format/unformatted.json test/format/unformatted.yaml" INPUT_FORMAT_CHECK="warn" INPUT_SCHEMASTORE="false" ./bin/entrypoint 2>&1)
+          EXIT=$?; set -e
+          echo "$OUTPUT"
+          cat "$GITHUB_OUTPUT"
+          if [ "$EXIT" != "0" ]; then echo "FAIL: expected exit 0 (warn override), got $EXIT"; exit 1; fi
+          if ! grep -q "files-failed=0" "$GITHUB_OUTPUT"; then echo "FAIL: expected files-failed=0"; exit 1; fi
+          if grep -q "files-unformatted=0" "$GITHUB_OUTPUT"; then echo "FAIL: expected files-unformatted > 0"; exit 1; fi
+
+      - name: "Stress: three-status mix (pass + fail + unformatted)"
+        run: |
+          GITHUB_OUTPUT=$(mktemp); export GITHUB_OUTPUT
+          set +e
+          OUTPUT=$(INPUT_SEARCH_PATHS="test/format/formatted.json test/failing/bad.json test/format/unformatted.json" INPUT_FORMAT_CHECK="warn" INPUT_SCHEMASTORE="false" ./bin/entrypoint 2>&1)
+          EXIT=$?; set -e
+          echo "$OUTPUT"
+          cat "$GITHUB_OUTPUT"
+          if [ "$EXIT" != "1" ]; then echo "FAIL: expected exit 1, got $EXIT"; exit 1; fi
+          grep "files-validated=3" "$GITHUB_OUTPUT" || { echo "FAIL: expected 3 validated"; exit 1; }
+          grep "files-failed=1" "$GITHUB_OUTPUT" || { echo "FAIL: expected 1 failed"; exit 1; }
+          grep "files-unformatted=1" "$GITHUB_OUTPUT" || { echo "FAIL: expected 1 unformatted"; exit 1; }
+
+      - name: "Stress: no-schema + require-schema rejected"
+        run: |
+          set +e
+          OUTPUT=$(INPUT_NO_SCHEMA="true" INPUT_REQUIRE_SCHEMA="true" INPUT_SEARCH_PATHS="test/good.json" INPUT_FORMAT_CHECK="off" ./bin/entrypoint 2>&1)
+          EXIT=$?; set -e
+          echo "$OUTPUT"
+          if [ "$EXIT" != "2" ]; then echo "FAIL: expected exit 2, got $EXIT"; exit 1; fi
+          if ! echo "$OUTPUT" | grep -q 'mutually exclusive'; then echo "FAIL: expected error"; exit 1; fi
+
+      - name: "Stress: globbing + exclude-dirs rejected"
+        run: |
+          set +e
+          OUTPUT=$(INPUT_GLOBBING="true" INPUT_EXCLUDE_DIRS="failing" INPUT_SEARCH_PATHS="**/*.json" INPUT_FORMAT_CHECK="off" ./bin/entrypoint 2>&1)
+          EXIT=$?; set -e
+          echo "$OUTPUT"
+          if [ "$EXIT" != "2" ]; then echo "FAIL: expected exit 2, got $EXIT"; exit 1; fi
+          if ! echo "$OUTPUT" | grep -q 'cannot be combined'; then echo "FAIL: expected error"; exit 1; fi
+
+      - name: "Stress: file-types + exclude-file-types rejected"
+        run: |
+          set +e
+          OUTPUT=$(INPUT_FILE_TYPES="json" INPUT_EXCLUDE_FILE_TYPES="yaml" INPUT_SEARCH_PATHS="." INPUT_FORMAT_CHECK="off" ./bin/entrypoint 2>&1)
+          EXIT=$?; set -e
+          echo "$OUTPUT"
+          if [ "$EXIT" != "2" ]; then echo "FAIL: expected exit 2, got $EXIT"; exit 1; fi
+          if ! echo "$OUTPUT" | grep -q 'mutually exclusive'; then echo "FAIL: expected error"; exit 1; fi
+
+      - name: "Stress: nonexistent config path rejected"
+        run: |
+          set +e
+          OUTPUT=$(INPUT_CONFIG="nonexistent/.cfv.toml" INPUT_SEARCH_PATHS="test/good.json" INPUT_FORMAT_CHECK="off" ./bin/entrypoint 2>&1)
+          EXIT=$?; set -e
+          echo "$OUTPUT"
+          if [ "$EXIT" != "2" ]; then echo "FAIL: expected exit 2, got $EXIT"; exit 1; fi
+
+      - name: "Stress: malformed .cfv.toml rejected"
+        run: |
+          echo 'this is not [valid toml' > /tmp/bad.cfv.toml
+          set +e
+          OUTPUT=$(INPUT_CONFIG="/tmp/bad.cfv.toml" INPUT_SEARCH_PATHS="test/good.json" INPUT_FORMAT_CHECK="off" ./bin/entrypoint 2>&1)
+          EXIT=$?; set -e
+          rm -f /tmp/bad.cfv.toml
+          echo "$OUTPUT"
+          if [ "$EXIT" != "2" ]; then echo "FAIL: expected exit 2 for malformed config, got $EXIT"; exit 1; fi
+
+      - name: "Stress: invalid depth rejected"
+        run: |
+          set +e
+          OUTPUT=$(INPUT_DEPTH="abc" INPUT_SEARCH_PATHS="test/good.json" INPUT_FORMAT_CHECK="off" ./bin/entrypoint 2>&1)
+          EXIT=$?; set -e
+          echo "$OUTPUT"
+          if [ "$EXIT" != "2" ]; then echo "FAIL: expected exit 2, got $EXIT"; exit 1; fi
+          if ! echo "$OUTPUT" | grep -q 'invalid depth'; then echo "FAIL: expected error"; exit 1; fi
+
+      - name: "Stress: format-check=off produces zero unformatted"
+        run: |
+          GITHUB_OUTPUT=$(mktemp); export GITHUB_OUTPUT
+          set +e
+          OUTPUT=$(INPUT_SEARCH_PATHS="test/format/unformatted.json" INPUT_FORMAT_CHECK="off" INPUT_SCHEMASTORE="false" ./bin/entrypoint 2>&1)
+          EXIT=$?; set -e
+          echo "$OUTPUT"
+          cat "$GITHUB_OUTPUT"
+          if [ "$EXIT" != "0" ]; then echo "FAIL: expected exit 0, got $EXIT"; exit 1; fi
+          if ! grep -q "files-unformatted=0" "$GITHUB_OUTPUT"; then echo "FAIL: expected files-unformatted=0"; exit 1; fi
+          if echo "$OUTPUT" | grep -q "::warning"; then echo "FAIL: format-check=off should not emit warnings"; exit 1; fi
+
+      - name: "Stress: job summary shows unformatted count"
+        run: |
+          GITHUB_OUTPUT=$(mktemp); export GITHUB_OUTPUT
+          GITHUB_STEP_SUMMARY=$(mktemp); export GITHUB_STEP_SUMMARY
+          INPUT_SEARCH_PATHS="test/format/unformatted.json" INPUT_FORMAT_CHECK="warn" INPUT_SCHEMASTORE="false" ./bin/entrypoint 2>&1 || true
+          echo "=== GITHUB_STEP_SUMMARY ==="
+          cat "$GITHUB_STEP_SUMMARY"
+          if ! grep -q "Needs formatting" "$GITHUB_STEP_SUMMARY"; then
+            echo "FAIL: job summary missing 'Needs formatting' row"
+            exit 1
+          fi
+          if ! grep -q "Formatting Issues" "$GITHUB_STEP_SUMMARY"; then
+            echo "FAIL: job summary missing 'Formatting Issues' section"
+            exit 1
+          fi
