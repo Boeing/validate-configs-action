@@ -51,7 +51,7 @@ inputs:
   schemastore:
     description: 'If set to true, enables automatic schema lookup using the embedded SchemaStore catalog with remote fetching'
     required: false
-    default: "false"
+    default: "true"
   schemastore-path:
     description: 'Path to a local SchemaStore clone for automatic schema lookup (implies schemastore). For air-gapped environments'
     required: false
@@ -76,37 +76,111 @@ inputs:
     description: 'If set to true, only validate files changed in the current pull request'
     required: false
     default: "false"
+  format-check:
+    description: 'Format checking mode. warn: warning annotations, exit 0. strict: error annotations, exit 1. off: no format checking'
+    required: false
+    default: "warn"
+  no-config:
+    description: 'If set to true, disable all config file discovery (.cfv.toml, .editorconfig, .prettierrc, etc.)'
+    required: false
+    default: "false"
+  config:
+    description: 'Explicit path to .cfv.toml config file. Skips auto-discovery'
+    required: false
+    default: ""
 
 outputs:
   files-validated:
     description: 'Total number of files scanned'
+    value: ${{ steps.run.outputs.files-validated }}
   files-failed:
     description: 'Number of files that failed validation'
+    value: ${{ steps.run.outputs.files-failed }}
   exit-code:
     description: 'Exit code from validation (0=success, 1=validation errors, 2=runtime error)'
+    value: ${{ steps.run.outputs.exit-code }}
+  files-unformatted:
+    description: 'Number of files that need formatting'
+    value: ${{ steps.run.outputs.files-unformatted }}
 
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
-  args:
-    - ${{ inputs.search-paths }}
-    - ${{ inputs.exclude-dirs }}
-    - ${{ inputs.exclude-file-types }}
-    - ${{ inputs.file-types }}
-    - ${{ inputs.depth }}
-    - ${{ inputs.reporter }}
-    - ${{ inputs.group-by }}
-    - ${{ inputs.quiet }}
-    - ${{ inputs.globbing }}
-    - ${{ inputs.require-schema }}
-    - ${{ inputs.no-schema }}
-    - ${{ inputs.schemastore }}
-    - ${{ inputs.schemastore-path }}
-    - ${{ inputs.type-map }}
-    - ${{ inputs.schema-map }}
-    - ${{ inputs.gitignore }}
-    - ${{ inputs.ignore-files }}
-    - ${{ inputs.only-changed }}
+  using: composite
+  steps:
+    - id: run
+      shell: bash
+      run: |
+        # Determine platform
+        OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+        ARCH=$(uname -m)
+        case "$ARCH" in
+          x86_64)  ARCH="amd64" ;;
+          aarch64) ARCH="arm64" ;;
+        esac
+
+        BINARY_NAME="entrypoint-${OS}-${ARCH}"
+
+        # Path 1: Local build exists (CI on this repo — built by 'just build')
+        LOCAL_BINARY="${{ github.action_path }}/bin/entrypoint"
+        if [ -x "$LOCAL_BINARY" ]; then
+          "$LOCAL_BINARY"
+          exit $?
+        fi
+
+        # Path 2: Download pre-built binary from GitHub Release (consumer path)
+        ACTION_VERSION="${GITHUB_ACTION_REF:-v3.0.0}"
+        if [[ ! "$ACTION_VERSION" =~ ^v[0-9] ]]; then
+          echo "::error::validate-configs-action must be pinned to a release tag (e.g., @v3 or @v3.0.0), not '${ACTION_VERSION}'"
+          exit 2
+        fi
+        ACTION_REPO="Boeing/validate-configs-action"
+        RELEASE_URL="https://github.com/${ACTION_REPO}/releases/download/${ACTION_VERSION}"
+        BINARY_PATH="${{ runner.temp }}/cfv-action"
+
+        # Download binary and checksums
+        curl -sL --fail "${RELEASE_URL}/${BINARY_NAME}" -o "$BINARY_PATH" || {
+          echo "::error::Failed to download binary for ${OS}/${ARCH}"
+          exit 2
+        }
+        curl -sL --fail "${RELEASE_URL}/checksums.txt" -o "${{ runner.temp }}/checksums.txt" || {
+          echo "::error::Failed to download checksums"
+          exit 2
+        }
+
+        # Verify checksum
+        EXPECTED=$(grep "${BINARY_NAME}" "${{ runner.temp }}/checksums.txt" | awk '{print $1}')
+        ACTUAL=$(shasum -a 256 "$BINARY_PATH" | awk '{print $1}')
+        if [ "$EXPECTED" != "$ACTUAL" ]; then
+          echo "::error::Checksum verification failed for ${BINARY_NAME}"
+          echo "::error::Expected: ${EXPECTED}"
+          echo "::error::Actual:   ${ACTUAL}"
+          exit 2
+        fi
+
+        chmod +x "$BINARY_PATH"
+        "$BINARY_PATH"
+        exit $?
+      env:
+        INPUT_SEARCH_PATHS: ${{ inputs.search-paths }}
+        INPUT_EXCLUDE_DIRS: ${{ inputs.exclude-dirs }}
+        INPUT_EXCLUDE_FILE_TYPES: ${{ inputs.exclude-file-types }}
+        INPUT_FILE_TYPES: ${{ inputs.file-types }}
+        INPUT_DEPTH: ${{ inputs.depth }}
+        INPUT_REPORTER: ${{ inputs.reporter }}
+        INPUT_GROUP_BY: ${{ inputs.group-by }}
+        INPUT_QUIET: ${{ inputs.quiet }}
+        INPUT_GLOBBING: ${{ inputs.globbing }}
+        INPUT_REQUIRE_SCHEMA: ${{ inputs.require-schema }}
+        INPUT_NO_SCHEMA: ${{ inputs.no-schema }}
+        INPUT_SCHEMASTORE: ${{ inputs.schemastore }}
+        INPUT_SCHEMASTORE_PATH: ${{ inputs.schemastore-path }}
+        INPUT_TYPE_MAP: ${{ inputs.type-map }}
+        INPUT_SCHEMA_MAP: ${{ inputs.schema-map }}
+        INPUT_GITIGNORE: ${{ inputs.gitignore }}
+        INPUT_IGNORE_FILES: ${{ inputs.ignore-files }}
+        INPUT_ONLY_CHANGED: ${{ inputs.only-changed }}
+        INPUT_FORMAT_CHECK: ${{ inputs.format-check }}
+        INPUT_NO_CONFIG: ${{ inputs.no-config }}
+        INPUT_CONFIG: ${{ inputs.config }}
 
 branding:
   color: 'blue'
