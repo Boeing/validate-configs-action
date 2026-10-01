@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Boeing/config-file-validator/v3/pkg/cli"
+	"github.com/Boeing/config-file-validator/v3/pkg/configfile"
 	"github.com/Boeing/config-file-validator/v3/pkg/filetype"
 	"github.com/Boeing/config-file-validator/v3/pkg/finder"
 	"github.com/Boeing/config-file-validator/v3/pkg/schemastore"
@@ -15,6 +16,7 @@ import (
 	"github.com/Boeing/validate-configs-action/internal/annotation"
 	"github.com/Boeing/validate-configs-action/internal/config"
 	"github.com/Boeing/validate-configs-action/internal/filter"
+	intformat "github.com/Boeing/validate-configs-action/internal/format"
 	"github.com/Boeing/validate-configs-action/internal/input"
 	"github.com/Boeing/validate-configs-action/internal/output"
 	intreporter "github.com/Boeing/validate-configs-action/internal/reporter"
@@ -23,6 +25,36 @@ import (
 
 // Run executes the validation pipeline and returns the exit code.
 func Run(cfg *config.Config) int {
+	// Validate format-check mode.
+	formatCheckMode := cfg.FormatCheck
+	switch formatCheckMode {
+	case "warn", "strict", "off":
+		// valid
+	default:
+		fmt.Fprintf(os.Stderr, "Error: invalid format-check value %q (must be warn, strict, or off)\n", formatCheckMode)
+		return 2
+	}
+
+	// Discover/load .cfv.toml config file.
+	noConfig := cfg.NoConfig == "true"
+	var cfvCfg *configfile.Config
+	var cfvCfgPath string
+	if !noConfig {
+		if cfg.ConfigPath != "" {
+			cfvCfgPath = cfg.ConfigPath
+		} else {
+			cfvCfgPath = configfile.Discover(".")
+		}
+		if cfvCfgPath != "" {
+			loaded, err := configfile.Load(cfvCfgPath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error loading config file %s: %v\n", cfvCfgPath, err)
+				return 2
+			}
+			cfvCfg = loaded
+		}
+	}
+
 	// Build finder options
 	var fsOpts []finder.FSFinderOptions
 
@@ -142,6 +174,20 @@ func Run(cfg *config.Config) int {
 		cliOpts = append(cliOpts, cli.WithSchemaStore(store))
 	}
 
+	// Wire config file path (tells cfv to skip format-checking its own config).
+	if cfvCfgPath != "" {
+		cliOpts = append(cliOpts, cli.WithConfigFile(cfvCfgPath))
+	}
+
+	// Wire format checking (warn/strict enable it, off skips it).
+	if formatCheckMode != "off" {
+		optsFunc, formatIgnores := intformat.BuildFormatOptionsFunc(cfvCfg, noConfig)
+		cliOpts = append(cliOpts, cli.WithFormatOptions(optsFunc))
+		if formatIgnores != nil {
+			cliOpts = append(cliOpts, cli.WithFormatIgnores(formatIgnores))
+		}
+	}
+
 	capture := &intreporter.CaptureReporter{}
 	reporters := intreporter.BuildReporters(cfg.Reporter)
 	reporters = append(reporters, capture)
@@ -153,10 +199,12 @@ func Run(cfg *config.Config) int {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 	}
 
-	annotation.EmitAnnotations(capture.Reports)
+	// Post-processing: annotations, notes, outputs, summary.
+	annotation.EmitAnnotations(capture.Reports, formatCheckMode)
 	annotation.EmitNotes(capture.Reports)
 	output.WriteOutputs(capture.Reports, exitStatus)
 	summary.WriteJobSummary(capture.Reports)
 
-	return exitStatus
+	// Override exit code based on format-check mode.
+	return intformat.ComputeExitCode(exitStatus, capture.Reports, formatCheckMode)
 }

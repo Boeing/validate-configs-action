@@ -76,6 +76,18 @@ inputs:
     description: 'If set to true, only validate files changed in the current pull request'
     required: false
     default: "false"
+  format-check:
+    description: 'Format checking mode. warn: warning annotations, exit 0. strict: error annotations, exit 1. off: no format checking'
+    required: false
+    default: "warn"
+  no-config:
+    description: 'If set to true, disable all config file discovery (.cfv.toml, .editorconfig, .prettierrc, etc.)'
+    required: false
+    default: "false"
+  config:
+    description: 'Explicit path to .cfv.toml config file. Skips auto-discovery'
+    required: false
+    default: ""
 
 outputs:
   files-validated:
@@ -87,6 +99,9 @@ outputs:
   exit-code:
     description: 'Exit code from validation (0=success, 1=validation errors, 2=runtime error)'
     value: ${{ steps.run.outputs.exit-code }}
+  files-unformatted:
+    description: 'Number of files that need formatting'
+    value: ${{ steps.run.outputs.files-unformatted }}
 
 runs:
   using: composite
@@ -159,6 +174,9 @@ runs:
         INPUT_GITIGNORE: ${{ inputs.gitignore }}
         INPUT_IGNORE_FILES: ${{ inputs.ignore-files }}
         INPUT_ONLY_CHANGED: ${{ inputs.only-changed }}
+        INPUT_FORMAT_CHECK: ${{ inputs.format-check }}
+        INPUT_NO_CONFIG: ${{ inputs.no-config }}
+        INPUT_CONFIG: ${{ inputs.config }}
 
 branding:
   color: 'blue'

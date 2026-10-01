@@ -24,6 +24,9 @@ func TestLoad_AllFieldsFromEnv(t *testing.T) {
 	t.Setenv("INPUT_GITIGNORE", "true")
 	t.Setenv("INPUT_IGNORE_FILES", ".dockerignore")
 	t.Setenv("INPUT_ONLY_CHANGED", "true")
+	t.Setenv("INPUT_FORMAT_CHECK", "error")
+	t.Setenv("INPUT_NO_CONFIG", "true")
+	t.Setenv("INPUT_CONFIG", "/path/to/config.yaml")
 
 	cfg := Load()
 
@@ -50,6 +53,9 @@ func TestLoad_AllFieldsFromEnv(t *testing.T) {
 		{"Gitignore", cfg.Gitignore, "true"},
 		{"IgnoreFiles", cfg.IgnoreFiles, ".dockerignore"},
 		{"OnlyChanged", cfg.OnlyChanged, "true"},
+		{"FormatCheck", cfg.FormatCheck, "error"},
+		{"NoConfig", cfg.NoConfig, "true"},
+		{"ConfigPath", cfg.ConfigPath, "/path/to/config.yaml"},
 	}
 	for _, c := range checks {
 		if c.got != c.want {
@@ -68,6 +74,7 @@ func TestLoad_Defaults(t *testing.T) {
 		"INPUT_QUIET", "INPUT_GLOBBING", "INPUT_REQUIRE_SCHEMA", "INPUT_NO_SCHEMA",
 		"INPUT_SCHEMASTORE", "INPUT_SCHEMASTORE_PATH", "INPUT_TYPE_MAP",
 		"INPUT_SCHEMA_MAP", "INPUT_GITIGNORE", "INPUT_IGNORE_FILES", "INPUT_ONLY_CHANGED",
+		"INPUT_FORMAT_CHECK", "INPUT_NO_CONFIG", "INPUT_CONFIG",
 	} {
 		t.Setenv(key, "")
 	}
@@ -89,6 +96,8 @@ func TestLoad_Defaults(t *testing.T) {
 		{"SchemaStore", cfg.SchemaStore, "true"},
 		{"Gitignore", cfg.Gitignore, "false"},
 		{"OnlyChanged", cfg.OnlyChanged, "false"},
+		{"FormatCheck", cfg.FormatCheck, "warn"},
+		{"NoConfig", cfg.NoConfig, "false"},
 	}
 	for _, c := range defaults {
 		if c.got != c.want {
@@ -110,6 +119,7 @@ func TestLoad_Defaults(t *testing.T) {
 		{"TypeMap", cfg.TypeMap},
 		{"SchemaMap", cfg.SchemaMap},
 		{"IgnoreFiles", cfg.IgnoreFiles},
+		{"ConfigPath", cfg.ConfigPath},
 	}
 	for _, c := range empties {
 		if c.got != "" {

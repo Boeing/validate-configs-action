@@ -168,7 +168,7 @@ func TestEmitAnnotations(t *testing.T) {
 				},
 			},
 		}
-		out := captureStdout(func() { EmitAnnotations(reports) })
+		out := captureStdout(func() { EmitAnnotations(reports, "strict") })
 
 		want := "::error file=cfg/app.yaml,title=Syntax Error,line=3,col=14::unexpected indent\n"
 		if out != want {
@@ -187,7 +187,7 @@ func TestEmitAnnotations(t *testing.T) {
 				},
 			},
 		}
-		out := captureStdout(func() { EmitAnnotations(reports) })
+		out := captureStdout(func() { EmitAnnotations(reports, "strict") })
 
 		// Column is 0 so no ,col= segment
 		want := "::error file=config.json,title=Schema Error,line=10::missing required field 'name'\n"
@@ -207,7 +207,7 @@ func TestEmitAnnotations(t *testing.T) {
 				},
 			},
 		}
-		out := captureStdout(func() { EmitAnnotations(reports) })
+		out := captureStdout(func() { EmitAnnotations(reports, "strict") })
 
 		want := "::error file=style.json,title=Formatting,line=5::incorrect indentation\n"
 		if out != want {
@@ -223,7 +223,7 @@ func TestEmitAnnotations(t *testing.T) {
 				Status:   reporter.StatusPass,
 			},
 		}
-		out := captureStdout(func() { EmitAnnotations(reports) })
+		out := captureStdout(func() { EmitAnnotations(reports, "strict") })
 
 		if out != "" {
 			t.Errorf("expected no output for passing report, got %q", out)
@@ -241,7 +241,7 @@ func TestEmitAnnotations(t *testing.T) {
 				},
 			},
 		}
-		out := captureStdout(func() { EmitAnnotations(reports) })
+		out := captureStdout(func() { EmitAnnotations(reports, "strict") })
 
 		want := "::error file=bad.ini,title=Syntax Error,line=1::unknown format\n"
 		if out != want {
@@ -260,7 +260,7 @@ func TestEmitAnnotations(t *testing.T) {
 				},
 			},
 		}
-		out := captureStdout(func() { EmitAnnotations(reports) })
+		out := captureStdout(func() { EmitAnnotations(reports, "strict") })
 
 		if !strings.Contains(out, ",col=12") {
 			t.Errorf("expected col=12 in output, got:\n%s", out)
@@ -278,7 +278,7 @@ func TestEmitAnnotations(t *testing.T) {
 				},
 			},
 		}
-		out := captureStdout(func() { EmitAnnotations(reports) })
+		out := captureStdout(func() { EmitAnnotations(reports, "strict") })
 
 		if strings.Contains(out, "col=") {
 			t.Errorf("expected no col= for Column=0, got:\n%s", out)
@@ -286,14 +286,14 @@ func TestEmitAnnotations(t *testing.T) {
 	})
 
 	t.Run("nil_reports_no_output", func(t *testing.T) {
-		out := captureStdout(func() { EmitAnnotations(nil) })
+		out := captureStdout(func() { EmitAnnotations(nil, "strict") })
 		if out != "" {
 			t.Errorf("expected no output for nil reports, got %q", out)
 		}
 	})
 
 	t.Run("empty_reports_no_output", func(t *testing.T) {
-		out := captureStdout(func() { EmitAnnotations([]reporter.Report{}) })
+		out := captureStdout(func() { EmitAnnotations([]reporter.Report{}, "strict") })
 		if out != "" {
 			t.Errorf("expected no output for empty reports, got %q", out)
 		}
@@ -312,7 +312,7 @@ func TestEmitAnnotations(t *testing.T) {
 				},
 			},
 		}
-		out := captureStdout(func() { EmitAnnotations(reports) })
+		out := captureStdout(func() { EmitAnnotations(reports, "strict") })
 
 		// Each issue produces its own ::error line — no coalescing in v3
 		lines := strings.Split(strings.TrimSpace(out), "\n")
@@ -341,7 +341,7 @@ func TestEmitAnnotations(t *testing.T) {
 				},
 			},
 		}
-		out := captureStdout(func() { EmitAnnotations(reports) })
+		out := captureStdout(func() { EmitAnnotations(reports, "strict") })
 
 		if strings.Contains(out, "/github/workspace/") {
 			t.Errorf("workspace prefix should be stripped, got:\n%s", out)
@@ -362,7 +362,7 @@ func TestEmitAnnotations(t *testing.T) {
 				},
 			},
 		}
-		out := captureStdout(func() { EmitAnnotations(reports) })
+		out := captureStdout(func() { EmitAnnotations(reports, "strict") })
 
 		if !strings.Contains(out, "line1%0Aline2") {
 			t.Errorf("expected escaped newline in message, got:\n%s", out)
@@ -398,7 +398,7 @@ func TestEmitAnnotations(t *testing.T) {
 				},
 			},
 		}
-		out := captureStdout(func() { EmitAnnotations(reports) })
+		out := captureStdout(func() { EmitAnnotations(reports, "strict") })
 
 		lines := strings.Split(strings.TrimSpace(out), "\n")
 		if len(lines) != 2 {
@@ -421,10 +421,118 @@ func TestEmitAnnotations(t *testing.T) {
 				Issues:   nil,
 			},
 		}
-		out := captureStdout(func() { EmitAnnotations(reports) })
+		out := captureStdout(func() { EmitAnnotations(reports, "strict") })
 
 		if out != "" {
 			t.Errorf("expected no output for failed report with no issues, got %q", out)
+		}
+	})
+
+	t.Run("format_issue_warn_mode", func(t *testing.T) {
+		reports := []reporter.Report{
+			{
+				FilePath: "style.json",
+				FileName: "style.json",
+				Status:   reporter.StatusUnformatted,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeFormat, Message: "incorrect indentation", Line: 5, Column: 0},
+				},
+			},
+		}
+		out := captureStdout(func() { EmitAnnotations(reports, "warn") })
+
+		want := "::warning file=style.json,title=Formatting,line=5::incorrect indentation\n"
+		if out != want {
+			t.Errorf("EmitAnnotations(warn) =\n  %q\nwant\n  %q", out, want)
+		}
+	})
+
+	t.Run("format_issue_strict_mode", func(t *testing.T) {
+		reports := []reporter.Report{
+			{
+				FilePath: "style.json",
+				FileName: "style.json",
+				Status:   reporter.StatusUnformatted,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeFormat, Message: "incorrect indentation", Line: 5, Column: 0},
+				},
+			},
+		}
+		out := captureStdout(func() { EmitAnnotations(reports, "strict") })
+
+		want := "::error file=style.json,title=Formatting,line=5::incorrect indentation\n"
+		if out != want {
+			t.Errorf("EmitAnnotations(strict) =\n  %q\nwant\n  %q", out, want)
+		}
+	})
+
+	t.Run("format_issue_off_mode", func(t *testing.T) {
+		reports := []reporter.Report{
+			{
+				FilePath: "style.json",
+				FileName: "style.json",
+				Status:   reporter.StatusUnformatted,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeFormat, Message: "incorrect indentation", Line: 5, Column: 0},
+				},
+			},
+		}
+		out := captureStdout(func() { EmitAnnotations(reports, "off") })
+
+		if out != "" {
+			t.Errorf("expected no output for format issues in off mode, got %q", out)
+		}
+	})
+
+	t.Run("syntax_error_ignores_format_mode", func(t *testing.T) {
+		reports := []reporter.Report{
+			{
+				FilePath: "broken.yaml",
+				FileName: "broken.yaml",
+				Status:   reporter.StatusFail,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeSyntax, Message: "unexpected indent", Line: 3, Column: 0},
+				},
+			},
+		}
+		out := captureStdout(func() { EmitAnnotations(reports, "warn") })
+
+		want := "::error file=broken.yaml,title=Syntax Error,line=3::unexpected indent\n"
+		if out != want {
+			t.Errorf("syntax errors should always be ::error regardless of format mode:\n  got  %q\n  want %q", out, want)
+		}
+	})
+
+	t.Run("mixed_fail_and_format_warn", func(t *testing.T) {
+		reports := []reporter.Report{
+			{
+				FilePath: "broken.yaml",
+				FileName: "broken.yaml",
+				Status:   reporter.StatusFail,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeSyntax, Message: "bad syntax", Line: 1, Column: 0},
+				},
+			},
+			{
+				FilePath: "messy.json",
+				FileName: "messy.json",
+				Status:   reporter.StatusUnformatted,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeFormat, Message: "wrong indent", Line: 2, Column: 0},
+				},
+			},
+		}
+		out := captureStdout(func() { EmitAnnotations(reports, "warn") })
+
+		lines := strings.Split(strings.TrimSpace(out), "\n")
+		if len(lines) != 2 {
+			t.Fatalf("expected 2 annotation lines, got %d:\n%s", len(lines), out)
+		}
+		if !strings.HasPrefix(lines[0], "::error ") {
+			t.Errorf("first line (syntax) should be ::error, got:\n%s", lines[0])
+		}
+		if !strings.HasPrefix(lines[1], "::warning ") {
+			t.Errorf("second line (format) should be ::warning in warn mode, got:\n%s", lines[1])
 		}
 	})
 }

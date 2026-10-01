@@ -126,7 +126,7 @@ func TestWriteOutputs_NilReports(t *testing.T) {
 
 func TestWriteOutputs_ExactFormat(t *testing.T) {
 	// Verify the entire output matches the expected format exactly —
-	// three lines, each terminated by a newline.
+	// four lines, each terminated by a newline.
 	reports := []reporter.Report{
 		{FilePath: "x", FileName: "x.json", Status: reporter.StatusPass},
 		{FilePath: "y", FileName: "y.json", Status: reporter.StatusFail, Issues: []reporter.Issue{{Type: reporter.IssueTypeSyntax, Message: "bad"}}},
@@ -134,8 +134,43 @@ func TestWriteOutputs_ExactFormat(t *testing.T) {
 
 	got := runWriteOutputs(t, reports, 1)
 
-	want := "files-validated=2\nfiles-failed=1\nexit-code=1\n"
+	want := "files-validated=2\nfiles-failed=1\nfiles-unformatted=0\nexit-code=1\n"
 	if got != want {
 		t.Errorf("exact output mismatch\nwant: %q\n got: %q", want, got)
 	}
+}
+
+func TestWriteOutputs_WithUnformatted(t *testing.T) {
+	reports := []reporter.Report{
+		{FilePath: "a", FileName: "a.json", Status: reporter.StatusPass},
+		{FilePath: "b", FileName: "b.yaml", Status: reporter.StatusUnformatted},
+		{FilePath: "c", FileName: "c.toml", Status: reporter.StatusUnformatted},
+		{FilePath: "d", FileName: "d.xml", Status: reporter.StatusPass},
+	}
+
+	got := runWriteOutputs(t, reports, 0)
+
+	assertContains(t, got, "files-validated=4\n")
+	assertContains(t, got, "files-failed=0\n")
+	assertContains(t, got, "files-unformatted=2\n")
+	assertContains(t, got, "exit-code=0\n")
+}
+
+func TestWriteOutputs_MixedAllThreeStatuses(t *testing.T) {
+	reports := []reporter.Report{
+		{FilePath: "a", FileName: "a.json", Status: reporter.StatusPass},
+		{FilePath: "b", FileName: "b.yaml", Status: reporter.StatusFail, Issues: []reporter.Issue{{Type: reporter.IssueTypeSyntax, Message: "bad yaml"}}},
+		{FilePath: "c", FileName: "c.toml", Status: reporter.StatusUnformatted},
+		{FilePath: "d", FileName: "d.xml", Status: reporter.StatusPass},
+		{FilePath: "e", FileName: "e.ini", Status: reporter.StatusFail, Issues: []reporter.Issue{{Type: reporter.IssueTypeSyntax, Message: "bad ini"}}},
+		{FilePath: "f", FileName: "f.json", Status: reporter.StatusUnformatted},
+		{FilePath: "g", FileName: "g.yaml", Status: reporter.StatusUnformatted},
+	}
+
+	got := runWriteOutputs(t, reports, 1)
+
+	assertContains(t, got, "files-validated=7\n")
+	assertContains(t, got, "files-failed=2\n")
+	assertContains(t, got, "files-unformatted=3\n")
+	assertContains(t, got, "exit-code=1\n")
 }

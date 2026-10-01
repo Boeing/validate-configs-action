@@ -22,6 +22,9 @@ type Config struct {
 	Gitignore        string
 	IgnoreFiles      string
 	OnlyChanged      string
+	FormatCheck      string
+	NoConfig         string
+	ConfigPath       string
 }
 
 // Load reads configuration from environment variables.
@@ -46,6 +49,9 @@ func Load() Config {
 		Gitignore:        envDefault("INPUT_GITIGNORE", "false"),
 		IgnoreFiles:      os.Getenv("INPUT_IGNORE_FILES"),
 		OnlyChanged:      envDefault("INPUT_ONLY_CHANGED", "false"),
+		FormatCheck:      envDefault("INPUT_FORMAT_CHECK", "warn"),
+		NoConfig:         envDefault("INPUT_NO_CONFIG", "false"),
+		ConfigPath:       os.Getenv("INPUT_CONFIG"),
 	}
 }
 

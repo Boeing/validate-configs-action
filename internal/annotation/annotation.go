@@ -12,8 +12,12 @@ func StripWorkspacePrefix(path string) string {
 	return strings.TrimPrefix(path, "/github/workspace/")
 }
 
-// EmitAnnotations writes GitHub Actions error annotations for non-passing reports.
-func EmitAnnotations(reports []reporter.Report) {
+// EmitAnnotations writes GitHub Actions annotations for non-passing reports.
+// formatCheckMode controls how format issues are reported:
+//   - "warn": format issues emit ::warning
+//   - "strict": format issues emit ::error
+//   - "off": format issues are skipped entirely
+func EmitAnnotations(reports []reporter.Report, formatCheckMode string) {
 	for i := range reports {
 		if reports[i].Status == reporter.StatusPass {
 			continue
@@ -22,13 +26,23 @@ func EmitAnnotations(reports []reporter.Report) {
 		path := StripWorkspacePrefix(reports[i].FilePath)
 
 		for _, issue := range reports[i].Issues {
+			// In off mode, skip format issues entirely.
+			if issue.Type == reporter.IssueTypeFormat && formatCheckMode == "off" {
+				continue
+			}
+
+			level := "error"
+			if issue.Type == reporter.IssueTypeFormat && formatCheckMode == "warn" {
+				level = "warning"
+			}
+
 			title := classifyIssue(issue.Type)
 			line := issue.Line
 			if line == 0 {
 				line = 1
 			}
 
-			cmd := fmt.Sprintf("::error file=%s,title=%s,line=%d", path, title, line)
+			cmd := fmt.Sprintf("::%s file=%s,title=%s,line=%d", level, path, title, line)
 			if issue.Column > 0 {
 				cmd += fmt.Sprintf(",col=%d", issue.Column)
 			}
