@@ -1,0 +1,52 @@
+---
+# Weekly check that the moving major tag (vN) points at a commit whose
+# VERSION file matches the latest published vN.* release. Catches the
+# "forgot to move the major tag after a release" drift. Non-blocking:
+# it fails a cheap job so the drift is visible in the Actions tab.
+name: Tag Drift Check
+
+on:
+  schedule:
+    - cron: '17 8 * * 1' # Mondays 08:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
+      - name: Verify major tag VERSION matches latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          REPO="${GITHUB_REPOSITORY}"
+
+          # Determine the major version from the VERSION file on the default branch.
+          VERSION="$(tr -d '[:space:]' < VERSION)"       # e.g. v3.0.0
+          MAJOR="${VERSION%%.*}"                           # e.g. v3
+
+          # Read the VERSION file as it exists on the major tag's commit.
+          if ! git rev-parse "refs/tags/${MAJOR}" >/dev/null 2>&1; then
+            echo "::warning::Major tag ${MAJOR} does not exist yet; nothing to check."
+            exit 0
+          fi
+          TAG_VERSION="$(git show "refs/tags/${MAJOR}:VERSION" | tr -d '[:space:]')"
+
+          # Find the latest published release whose tag starts with the major.
+          LATEST="$(gh api "repos/${REPO}/releases" \
+            --jq "[.[] | select(.draft==false) | .tag_name] | map(select(startswith(\"${MAJOR}.\"))) | .[0]")"
+
+          echo "Major tag ${MAJOR} VERSION file: ${TAG_VERSION}"
+          echo "Latest ${MAJOR}.* release:       ${LATEST}"
+
+          if [ "$TAG_VERSION" != "$LATEST" ]; then
+            echo "::error::Major tag ${MAJOR} points at a commit whose VERSION (${TAG_VERSION}) does not match the latest ${MAJOR}.* release (${LATEST}). Re-point ${MAJOR} to the release commit."
+            exit 1
+          fi
+          echo "Major tag ${MAJOR} is in sync with release ${LATEST}."

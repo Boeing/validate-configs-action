@@ -126,23 +126,32 @@ runs:
           exit $?
         fi
 
-        # Path 2: Download pre-built binary from GitHub Release (consumer path)
-        ACTION_VERSION="${GITHUB_ACTION_REF:-v3.0.0}"
+        # Path 2: Download pre-built binary from the pinned GitHub Release.
+        # The VERSION file is committed alongside action.yaml and travels with
+        # the tag the consumer resolved (@v3, @v3.0.0, or a SHA all read the
+        # VERSION committed at that checkout). The release workflow enforces
+        # VERSION == tag, so this value can never drift from a real release.
+        VERSION_FILE="${{ github.action_path }}/VERSION"
+        if [ ! -f "$VERSION_FILE" ]; then
+          echo "::error::VERSION file not found at ${VERSION_FILE}"
+          exit 2
+        fi
+        ACTION_VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
         if [[ ! "$ACTION_VERSION" =~ ^v[0-9] ]]; then
-          echo "::error::validate-configs-action must be pinned to a release tag (e.g., @v3 or @v3.0.0), not '${ACTION_VERSION}'"
+          echo "::error::VERSION file contains an invalid version: '${ACTION_VERSION}'"
           exit 2
         fi
         ACTION_REPO="Boeing/validate-configs-action"
         RELEASE_URL="https://github.com/${ACTION_REPO}/releases/download/${ACTION_VERSION}"
         BINARY_PATH="${{ runner.temp }}/cfv-action"
 
-        # Download binary and checksums
-        curl -sL --fail "${RELEASE_URL}/${BINARY_NAME}" -o "$BINARY_PATH" || {
-          echo "::error::Failed to download binary for ${OS}/${ARCH}"
+        # Download binary and checksums (with retries for transient CDN blips)
+        curl -sL --fail --retry 3 --retry-delay 5 "${RELEASE_URL}/${BINARY_NAME}" -o "$BINARY_PATH" || {
+          echo "::error::Failed to download binary for ${OS}/${ARCH} from release ${ACTION_VERSION}"
           exit 2
         }
-        curl -sL --fail "${RELEASE_URL}/checksums.txt" -o "${{ runner.temp }}/checksums.txt" || {
-          echo "::error::Failed to download checksums"
+        curl -sL --fail --retry 3 --retry-delay 5 "${RELEASE_URL}/checksums.txt" -o "${{ runner.temp }}/checksums.txt" || {
+          echo "::error::Failed to download checksums from release ${ACTION_VERSION}"
           exit 2
         }
 

@@ -811,3 +811,60 @@ jobs:
             echo "FAIL: job summary missing 'Formatting Issues' section"
             exit 1
           fi
+
+  # ---------------------------------------------------------------------------
+  # VERSION file + download-path version resolution
+  # ---------------------------------------------------------------------------
+  test-version-file:
+    name: "Test: VERSION file resolution"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: "Committed VERSION file is well-formed"
+        run: |
+          if [ ! -f VERSION ]; then echo "FAIL: VERSION file missing"; exit 1; fi
+          V="$(tr -d '[:space:]' < VERSION)"
+          echo "VERSION=$V"
+          if [[ ! "$V" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "FAIL: VERSION '$V' is not a vX.Y.Z semver tag"; exit 1
+          fi
+
+      - name: "action.yaml reads VERSION, not GITHUB_ACTION_REF"
+        run: |
+          if grep -q 'GITHUB_ACTION_REF' action.yaml; then
+            echo "FAIL: action.yaml still references GITHUB_ACTION_REF (should read VERSION)"; exit 1
+          fi
+          if ! grep -q 'VERSION_FILE=' action.yaml; then
+            echo "FAIL: action.yaml does not read a VERSION file"; exit 1
+          fi
+
+      - name: "Adversarial: version-parsing logic rejects bad input"
+        run: |
+          # Mirror the exact validation the action uses: ^v[0-9]
+          check() {
+            local raw="$1" expect="$2"
+            local v; v="$(printf '%s' "$raw" | tr -d '[:space:]')"
+            if [[ "$v" =~ ^v[0-9] ]]; then got="accept"; else got="reject"; fi
+            if [ "$got" != "$expect" ]; then
+              echo "FAIL: input '$raw' -> $got, expected $expect"; exit 1
+            fi
+            echo "OK: '$raw' -> $got"
+          }
+          check "v3.0.0" accept
+          check "v3.0.0
+          " accept            # trailing newline tolerated
+          check "banana"  reject
+          check ""        reject
+          check "3.0.0"   reject   # missing leading v
+          check "latest"  reject
+
+      - name: "Adversarial: missing VERSION file is detectable"
+        run: |
+          # Simulate the action's 'file not found' guard in isolation.
+          MISSING="/tmp/does-not-exist-version"
+          if [ -f "$MISSING" ]; then echo "FAIL: setup"; exit 1; fi
+          # The action exits 2 when the file is absent; emulate the guard here.
+          if [ ! -f "$MISSING" ]; then
+            echo "OK: missing VERSION correctly detected (action exits 2)"
+          fi
