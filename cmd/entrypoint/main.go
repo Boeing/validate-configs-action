@@ -231,7 +231,7 @@ func getChangedFiles() (map[string]struct{}, error) {
 
 	// Docker containers run as root but the workspace is owned by the runner user
 	safe := exec.Command("git", "config", "--global", "--add", "safe.directory", "/github/workspace")
-	safe.Run()
+	_ = safe.Run() // best-effort; non-fatal if it fails
 
 	fetch := exec.Command("git", "fetch", "origin", baseBranch, "--depth=1")
 	fetch.Stderr = os.Stderr
@@ -262,21 +262,21 @@ func writeOutputs(reports []reporter.Report, exitCode int) {
 
 	total := len(reports)
 	failed := 0
-	for _, r := range reports {
-		if !r.IsValid {
+	for i := range reports {
+		if !reports[i].IsValid {
 			failed++
 		}
 	}
 
-	f, err := os.OpenFile(outputFile, os.O_APPEND|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(outputFile, os.O_APPEND|os.O_WRONLY, 0o644) //nolint:gosec // GITHUB_OUTPUT is a trusted path set by the GitHub runner
 	if err != nil {
 		return
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck // best-effort file close
 
-	fmt.Fprintf(f, "files-validated=%d\n", total)
-	fmt.Fprintf(f, "files-failed=%d\n", failed)
-	fmt.Fprintf(f, "exit-code=%d\n", exitCode)
+	_, _ = fmt.Fprintf(f, "files-validated=%d\n", total)
+	_, _ = fmt.Fprintf(f, "files-failed=%d\n", failed)
+	_, _ = fmt.Fprintf(f, "exit-code=%d\n", exitCode)
 }
 
 func writeJobSummary(reports []reporter.Report) {
@@ -289,56 +289,50 @@ func writeJobSummary(reports []reporter.Report) {
 	passed := 0
 	failed := 0
 	var failedReports []reporter.Report
-	for _, r := range reports {
-		if r.IsValid {
+	for i := range reports {
+		if reports[i].IsValid {
 			passed++
 		} else {
 			failed++
-			failedReports = append(failedReports, r)
+			failedReports = append(failedReports, reports[i])
 		}
 	}
 
-	f, err := os.OpenFile(summaryFile, os.O_APPEND|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(summaryFile, os.O_APPEND|os.O_WRONLY, 0o644) //nolint:gosec // GITHUB_STEP_SUMMARY is a trusted path set by the GitHub runner
 	if err != nil {
 		return
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck // best-effort file close
 
 	if failed == 0 {
-		fmt.Fprintf(f, "### ✅ Config Validation Passed\n\n")
-		fmt.Fprintf(f, "All **%d** configuration files are valid.\n", total)
+		_, _ = fmt.Fprintf(f, "### ✅ Config Validation Passed\n\n")
+		_, _ = fmt.Fprintf(f, "All **%d** configuration files are valid.\n", total)
 		return
 	}
 
-	fmt.Fprintf(f, "### ❌ Config Validation Failed\n\n")
-	fmt.Fprintf(f, "| | Count |\n|---|---|\n")
-	fmt.Fprintf(f, "| ✅ Passed | %d |\n", passed)
-	fmt.Fprintf(f, "| ❌ Failed | %d |\n", failed)
-	fmt.Fprintf(f, "| **Total** | **%d** |\n\n", total)
+	_, _ = fmt.Fprintf(f, "### ❌ Config Validation Failed\n\n")
+	_, _ = fmt.Fprintf(f, "| | Count |\n|---|---|\n")
+	_, _ = fmt.Fprintf(f, "| ✅ Passed | %d |\n", passed)
+	_, _ = fmt.Fprintf(f, "| ❌ Failed | %d |\n", failed)
+	_, _ = fmt.Fprintf(f, "| **Total** | **%d** |\n\n", total)
 
-	fmt.Fprintf(f, "#### Failed Files\n\n")
-	fmt.Fprintf(f, "| File | Errors |\n|---|---|\n")
-	for _, r := range failedReports {
-		path := r.FilePath
-		if strings.HasPrefix(path, "/github/workspace/") {
-			path = path[len("/github/workspace/"):]
-		}
-		errors := strings.Join(r.ValidationErrors, "<br>")
-		fmt.Fprintf(f, "| `%s` | %s |\n", path, errors)
+	_, _ = fmt.Fprintf(f, "#### Failed Files\n\n")
+	_, _ = fmt.Fprintf(f, "| File | Errors |\n|---|---|\n")
+	for i := range failedReports {
+		path := strings.TrimPrefix(failedReports[i].FilePath, "/github/workspace/")
+		errors := strings.Join(failedReports[i].ValidationErrors, "<br>")
+		_, _ = fmt.Fprintf(f, "| `%s` | %s |\n", path, errors)
 	}
 }
 
 func emitNotes(reports []reporter.Report) {
 	const workspacePrefix = "/github/workspace/"
-	for _, r := range reports {
-		if len(r.Notes) == 0 {
+	for i := range reports {
+		if len(reports[i].Notes) == 0 {
 			continue
 		}
-		path := r.FilePath
-		if strings.HasPrefix(path, workspacePrefix) {
-			path = path[len(workspacePrefix):]
-		}
-		for _, note := range r.Notes {
+		path := strings.TrimPrefix(reports[i].FilePath, workspacePrefix)
+		for _, note := range reports[i].Notes {
 			fmt.Printf("::notice file=%s,title=Note::%s\n", path, escapeAnnotation(note))
 		}
 	}
@@ -377,8 +371,9 @@ func parseTypeMap(input string) ([]finder.TypeOverride, error) {
 	for _, ft := range filetype.FileTypes {
 		fileTypesByName[ft.Name] = ft
 	}
-	var overrides []finder.TypeOverride
-	for _, mapping := range strings.Split(input, ",") {
+	mappings := strings.Split(input, ",")
+	overrides := make([]finder.TypeOverride, 0, len(mappings))
+	for _, mapping := range mappings {
 		parts := strings.SplitN(mapping, ":", 2)
 		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 			return nil, fmt.Errorf("invalid type-map format %q", mapping)
@@ -453,17 +448,14 @@ func emitAnnotations(reports []reporter.Report) {
 	groups := map[string]*annotationGroup{}
 	var order []string
 
-	for _, r := range reports {
-		if r.IsValid {
+	for i := range reports {
+		if reports[i].IsValid {
 			continue
 		}
 
-		path := r.FilePath
-		if strings.HasPrefix(path, workspacePrefix) {
-			path = path[len(workspacePrefix):]
-		}
+		path := strings.TrimPrefix(reports[i].FilePath, workspacePrefix)
 
-		for i, errMsg := range r.ValidationErrors {
+		for j, errMsg := range reports[i].ValidationErrors {
 			title := "Validation Error"
 			msg := errMsg
 			if strings.HasPrefix(errMsg, "schema: ") {
@@ -477,11 +469,11 @@ func emitAnnotations(reports []reporter.Report) {
 			// Use per-error positions from report when available,
 			// fall back to regex parsing for compatibility.
 			var line, col int
-			if i < len(r.ErrorLines) && r.ErrorLines[i] > 0 {
-				line = r.ErrorLines[i]
+			if j < len(reports[i].ErrorLines) && reports[i].ErrorLines[j] > 0 {
+				line = reports[i].ErrorLines[j]
 			}
-			if i < len(r.ErrorColumns) && r.ErrorColumns[i] > 0 {
-				col = r.ErrorColumns[i]
+			if j < len(reports[i].ErrorColumns) && reports[i].ErrorColumns[j] > 0 {
+				col = reports[i].ErrorColumns[j]
 			}
 			if line == 0 {
 				line, col = parseLine(msg)
@@ -516,8 +508,7 @@ func emitAnnotations(reports []reporter.Report) {
 	}
 }
 
-func parseLine(msg string) (int, int) {
-	var line, col int
+func parseLine(msg string) (line, col int) {
 	if m := reLineNum.FindStringSubmatch(msg); len(m) > 1 {
 		line, _ = strconv.Atoi(m[1])
 	}
