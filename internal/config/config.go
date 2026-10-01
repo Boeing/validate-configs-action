@@ -39,7 +39,7 @@ func Load() Config {
 		Globbing:         envDefault("INPUT_GLOBBING", "false"),
 		RequireSchema:    envDefault("INPUT_REQUIRE_SCHEMA", "false"),
 		NoSchema:         envDefault("INPUT_NO_SCHEMA", "false"),
-		SchemaStore:      envDefault("INPUT_SCHEMASTORE", "false"),
+		SchemaStore:      envDefault("INPUT_SCHEMASTORE", "true"),
 		SchemaStorePath:  os.Getenv("INPUT_SCHEMASTORE_PATH"),
 		TypeMap:          os.Getenv("INPUT_TYPE_MAP"),
 		SchemaMap:        os.Getenv("INPUT_SCHEMA_MAP"),

@@ -3,14 +3,14 @@ package reporter
 import (
 	"strings"
 
-	cfvreporter "github.com/Boeing/config-file-validator/v2/pkg/reporter"
+	cfvreporter "github.com/Boeing/config-file-validator/v3/pkg/reporter"
 )
 
 // BuildReporters parses a comma-separated reporter string into cfv Reporter instances.
 // Format: "type:dest,type:dest" where :dest is optional.
 func BuildReporters(arg string) []cfvreporter.Reporter {
 	if arg == "" {
-		return []cfvreporter.Reporter{cfvreporter.NewStdoutReporter("")}
+		return []cfvreporter.Reporter{cfvreporter.NewStdoutReporter("", false)}
 	}
 	var reporters []cfvreporter.Reporter
 	for _, r := range strings.Split(arg, ",") {
@@ -22,15 +22,15 @@ func BuildReporters(arg string) []cfvreporter.Reporter {
 		}
 		switch name {
 		case "json":
-			reporters = append(reporters, cfvreporter.NewJSONReporter(dest))
+			reporters = append(reporters, cfvreporter.NewJSONReporter(dest, false))
 		case "junit":
-			reporters = append(reporters, cfvreporter.NewJunitReporter(dest))
+			reporters = append(reporters, cfvreporter.NewJunitReporter(dest, false))
 		case "sarif":
-			reporters = append(reporters, cfvreporter.NewSARIFReporter(dest))
+			reporters = append(reporters, cfvreporter.NewSARIFReporter(dest, "", false))
 		case "github":
-			reporters = append(reporters, cfvreporter.NewGitHubReporter(dest))
+			reporters = append(reporters, cfvreporter.NewGitHubReporter(dest, false))
 		default:
-			reporters = append(reporters, cfvreporter.NewStdoutReporter(dest))
+			reporters = append(reporters, cfvreporter.NewStdoutReporter(dest, false))
 		}
 	}
 	return reporters

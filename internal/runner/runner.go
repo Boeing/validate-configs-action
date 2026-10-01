@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Boeing/config-file-validator/v2/pkg/cli"
-	"github.com/Boeing/config-file-validator/v2/pkg/filetype"
-	"github.com/Boeing/config-file-validator/v2/pkg/finder"
-	"github.com/Boeing/config-file-validator/v2/pkg/schemastore"
-	"github.com/Boeing/config-file-validator/v2/pkg/tools"
+	"github.com/Boeing/config-file-validator/v3/pkg/cli"
+	"github.com/Boeing/config-file-validator/v3/pkg/filetype"
+	"github.com/Boeing/config-file-validator/v3/pkg/finder"
+	"github.com/Boeing/config-file-validator/v3/pkg/schemastore"
+	"github.com/Boeing/config-file-validator/v3/pkg/tools"
 
 	"github.com/Boeing/validate-configs-action/internal/annotation"
 	"github.com/Boeing/validate-configs-action/internal/config"

@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"testing"
 
-	cfvreporter "github.com/Boeing/config-file-validator/v2/pkg/reporter"
+	cfvreporter "github.com/Boeing/config-file-validator/v3/pkg/reporter"
 )
 
 func TestCaptureReporter_Print_AccumulatesReports(t *testing.T) {
 	c := &CaptureReporter{}
 	reports := []cfvreporter.Report{
-		{FilePath: "/tmp", FileName: "a.json", IsValid: true},
-		{FilePath: "/tmp", FileName: "b.yaml", IsValid: false, ValidationErrors: []string{"bad syntax"}},
+		{FilePath: "/tmp", FileName: "a.json", Status: cfvreporter.StatusPass},
+		{FilePath: "/tmp", FileName: "b.yaml", Status: cfvreporter.StatusFail, Issues: []cfvreporter.Issue{{Type: cfvreporter.IssueTypeSyntax, Message: "bad syntax"}}},
 	}
 
 	err := c.Print(reports)
@@ -33,11 +33,11 @@ func TestCaptureReporter_Print_MultipleCallsAppend(t *testing.T) {
 	c := &CaptureReporter{}
 
 	batch1 := []cfvreporter.Report{
-		{FileName: "first.json", IsValid: true},
+		{FileName: "first.json", Status: cfvreporter.StatusPass},
 	}
 	batch2 := []cfvreporter.Report{
-		{FileName: "second.yaml", IsValid: false},
-		{FileName: "third.toml", IsValid: true},
+		{FileName: "second.yaml", Status: cfvreporter.StatusFail},
+		{FileName: "third.toml", Status: cfvreporter.StatusPass},
 	}
 
 	if err := c.Print(batch1); err != nil {
@@ -85,13 +85,14 @@ func TestCaptureReporter_Print_NilSlice(t *testing.T) {
 func TestCaptureReporter_Print_PreservesAllFields(t *testing.T) {
 	c := &CaptureReporter{}
 	report := cfvreporter.Report{
-		FilePath:         "/path/to",
-		FileName:         "config.json",
-		IsValid:          false,
-		ValidationErrors: []string{"error1", "error2"},
-		ErrorLines:       []int{10, 20},
-		ErrorColumns:     []int{5, 15},
-		Notes:            []string{"note1"},
+		FilePath: "/path/to",
+		FileName: "config.json",
+		Status:   cfvreporter.StatusFail,
+		Issues: []cfvreporter.Issue{
+			{Type: cfvreporter.IssueTypeSyntax, Message: "error1", Line: 10, Column: 5},
+			{Type: cfvreporter.IssueTypeSyntax, Message: "error2", Line: 20, Column: 15},
+		},
+		Notes: []string{"note1"},
 	}
 
 	if err := c.Print([]cfvreporter.Report{report}); err != nil {
@@ -105,17 +106,32 @@ func TestCaptureReporter_Print_PreservesAllFields(t *testing.T) {
 	if got.FileName != "config.json" {
 		t.Errorf("FileName: got %q, want %q", got.FileName, "config.json")
 	}
-	if got.IsValid {
-		t.Error("IsValid: got true, want false")
+	if got.Status != cfvreporter.StatusFail {
+		t.Errorf("Status: got %v, want %v", got.Status, cfvreporter.StatusFail)
 	}
-	if len(got.ValidationErrors) != 2 {
-		t.Errorf("ValidationErrors: got %d, want 2", len(got.ValidationErrors))
+	if len(got.Issues) != 2 {
+		t.Fatalf("Issues: got %d, want 2", len(got.Issues))
 	}
-	if len(got.ErrorLines) != 2 {
-		t.Errorf("ErrorLines: got %d, want 2", len(got.ErrorLines))
+	if got.Issues[0].Type != cfvreporter.IssueTypeSyntax {
+		t.Errorf("Issues[0].Type: got %v, want %v", got.Issues[0].Type, cfvreporter.IssueTypeSyntax)
 	}
-	if len(got.ErrorColumns) != 2 {
-		t.Errorf("ErrorColumns: got %d, want 2", len(got.ErrorColumns))
+	if got.Issues[0].Message != "error1" {
+		t.Errorf("Issues[0].Message: got %q, want %q", got.Issues[0].Message, "error1")
+	}
+	if got.Issues[0].Line != 10 {
+		t.Errorf("Issues[0].Line: got %d, want 10", got.Issues[0].Line)
+	}
+	if got.Issues[0].Column != 5 {
+		t.Errorf("Issues[0].Column: got %d, want 5", got.Issues[0].Column)
+	}
+	if got.Issues[1].Message != "error2" {
+		t.Errorf("Issues[1].Message: got %q, want %q", got.Issues[1].Message, "error2")
+	}
+	if got.Issues[1].Line != 20 {
+		t.Errorf("Issues[1].Line: got %d, want 20", got.Issues[1].Line)
+	}
+	if got.Issues[1].Column != 15 {
+		t.Errorf("Issues[1].Column: got %d, want 15", got.Issues[1].Column)
 	}
 	if len(got.Notes) != 1 {
 		t.Errorf("Notes: got %d, want 1", len(got.Notes))

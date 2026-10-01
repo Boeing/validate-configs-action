@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Boeing/config-file-validator/v2/pkg/finder"
+	"github.com/Boeing/config-file-validator/v3/pkg/finder"
 )
 
 // ChangedFilesFilter wraps a FileFinder and filters results to only changed files.

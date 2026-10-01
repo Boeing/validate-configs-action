@@ -1,7 +1,7 @@
 package reporter
 
 import (
-	cfvreporter "github.com/Boeing/config-file-validator/v2/pkg/reporter"
+	cfvreporter "github.com/Boeing/config-file-validator/v3/pkg/reporter"
 )
 
 // CaptureReporter implements cfv's Reporter interface to accumulate reports

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Boeing/config-file-validator/v2/pkg/reporter"
+	"github.com/Boeing/config-file-validator/v3/pkg/reporter"
 )
 
 // helper creates a temp file for GITHUB_STEP_SUMMARY and sets the env var.
@@ -38,7 +38,7 @@ func TestWriteJobSummary_EnvNotSet(t *testing.T) {
 
 	// Should return immediately without panic or error.
 	WriteJobSummary([]reporter.Report{
-		{FilePath: "/some/file.json", FileName: "file.json", IsValid: true},
+		{FilePath: "/some/file.json", FileName: "file.json", Status: reporter.StatusPass},
 	})
 }
 
@@ -46,9 +46,9 @@ func TestWriteJobSummary_AllPassing(t *testing.T) {
 	path := setupSummaryFile(t)
 
 	reports := []reporter.Report{
-		{FilePath: "/repo/config.json", FileName: "config.json", IsValid: true},
-		{FilePath: "/repo/settings.yaml", FileName: "settings.yaml", IsValid: true},
-		{FilePath: "/repo/data.toml", FileName: "data.toml", IsValid: true},
+		{FilePath: "/repo/config.json", FileName: "config.json", Status: reporter.StatusPass},
+		{FilePath: "/repo/settings.yaml", FileName: "settings.yaml", Status: reporter.StatusPass},
+		{FilePath: "/repo/data.toml", FileName: "data.toml", Status: reporter.StatusPass},
 	}
 
 	WriteJobSummary(reports)
@@ -73,18 +73,18 @@ func TestWriteJobSummary_SomeFailures(t *testing.T) {
 	path := setupSummaryFile(t)
 
 	reports := []reporter.Report{
-		{FilePath: "/repo/good.json", FileName: "good.json", IsValid: true},
+		{FilePath: "/repo/good.json", FileName: "good.json", Status: reporter.StatusPass},
 		{
-			FilePath:         "/repo/bad.yaml",
-			FileName:         "bad.yaml",
-			IsValid:          false,
-			ValidationErrors: []string{"syntax error at line 5"},
+			FilePath: "/repo/bad.yaml",
+			FileName: "bad.yaml",
+			Status:   reporter.StatusFail,
+			Issues:   []reporter.Issue{{Type: reporter.IssueTypeSyntax, Message: "syntax error at line 5"}},
 		},
 		{
-			FilePath:         "/repo/broken.toml",
-			FileName:         "broken.toml",
-			IsValid:          false,
-			ValidationErrors: []string{"unexpected key"},
+			FilePath: "/repo/broken.toml",
+			FileName: "broken.toml",
+			Status:   reporter.StatusFail,
+			Issues:   []reporter.Issue{{Type: reporter.IssueTypeSyntax, Message: "unexpected key"}},
 		},
 	}
 
@@ -132,23 +132,23 @@ func TestWriteJobSummary_WorkspacePathStripped(t *testing.T) {
 
 	reports := []reporter.Report{
 		{
-			FilePath:         "/github/workspace/src/config.json",
-			FileName:         "config.json",
-			IsValid:          false,
-			ValidationErrors: []string{"invalid JSON"},
+			FilePath: "/github/workspace/src/config.json",
+			FileName: "config.json",
+			Status:   reporter.StatusFail,
+			Issues:   []reporter.Issue{{Type: reporter.IssueTypeSyntax, Message: "invalid JSON"}},
 		},
 		{
-			FilePath:         "/github/workspace/deep/nested/file.yaml",
-			FileName:         "file.yaml",
-			IsValid:          false,
-			ValidationErrors: []string{"bad indent"},
+			FilePath: "/github/workspace/deep/nested/file.yaml",
+			FileName: "file.yaml",
+			Status:   reporter.StatusFail,
+			Issues:   []reporter.Issue{{Type: reporter.IssueTypeSyntax, Message: "bad indent"}},
 		},
 		{
 			// Path that does NOT have the workspace prefix should be kept as-is.
-			FilePath:         "/other/path/file.toml",
-			FileName:         "file.toml",
-			IsValid:          false,
-			ValidationErrors: []string{"missing value"},
+			FilePath: "/other/path/file.toml",
+			FileName: "file.toml",
+			Status:   reporter.StatusFail,
+			Issues:   []reporter.Issue{{Type: reporter.IssueTypeSyntax, Message: "missing value"}},
 		},
 	}
 
@@ -188,18 +188,18 @@ func TestWriteJobSummary_EmptyReports(t *testing.T) {
 	}
 }
 
-func TestWriteJobSummary_MultipleErrorsJoinedWithBr(t *testing.T) {
+func TestWriteJobSummary_MultipleIssuesJoinedWithBr(t *testing.T) {
 	path := setupSummaryFile(t)
 
 	reports := []reporter.Report{
 		{
 			FilePath: "/repo/multi-err.json",
 			FileName: "multi-err.json",
-			IsValid:  false,
-			ValidationErrors: []string{
-				"missing required field 'name'",
-				"invalid type for 'version'",
-				"additional property 'foo' not allowed",
+			Status:   reporter.StatusFail,
+			Issues: []reporter.Issue{
+				{Type: reporter.IssueTypeSchema, Message: "missing required field 'name'"},
+				{Type: reporter.IssueTypeSchema, Message: "invalid type for 'version'"},
+				{Type: reporter.IssueTypeSchema, Message: "additional property 'foo' not allowed"},
 			},
 		},
 	}
@@ -208,14 +208,14 @@ func TestWriteJobSummary_MultipleErrorsJoinedWithBr(t *testing.T) {
 
 	got := readSummary(t, path)
 
-	// Errors should be joined with <br>
+	// Issues should be joined with <br>
 	if !strings.Contains(got, "missing required field 'name'<br>invalid type for 'version'<br>additional property 'foo' not allowed") {
-		t.Error("expected multiple errors joined with <br>")
+		t.Error("expected multiple issues joined with <br>")
 	}
-	// Each individual error should be present
-	for _, e := range reports[0].ValidationErrors {
-		if !strings.Contains(got, e) {
-			t.Errorf("expected error %q in output", e)
+	// Each individual issue message should be present
+	for _, issue := range reports[0].Issues {
+		if !strings.Contains(got, issue.Message) {
+			t.Errorf("expected issue message %q in output", issue.Message)
 		}
 	}
 }

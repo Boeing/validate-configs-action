@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Boeing/config-file-validator/v2/pkg/reporter"
+	"github.com/Boeing/config-file-validator/v3/pkg/reporter"
 )
 
 // captureStdout redirects os.Stdout to a pipe, runs fn, and returns whatever
@@ -47,70 +47,6 @@ func TestEscapeAnnotation(t *testing.T) {
 			got := EscapeAnnotation(tt.in)
 			if got != tt.want {
 				t.Errorf("EscapeAnnotation(%q) = %q, want %q", tt.in, got, tt.want)
-			}
-		})
-	}
-}
-
-// ---------------------------------------------------------------------------
-// ParseLine
-// ---------------------------------------------------------------------------
-
-func TestParseLine(t *testing.T) {
-	tests := []struct {
-		name    string
-		msg     string
-		wantL   int
-		wantC   int
-	}{
-		{
-			name:  "line_and_column",
-			msg:   "line 3, column 14: unexpected token",
-			wantL: 3, wantC: 14,
-		},
-		{
-			name:  "line_only",
-			msg:   "line 7: missing closing bracket",
-			wantL: 7, wantC: 0,
-		},
-		{
-			name:  "no_line_no_column",
-			msg:   "unexpected end of input",
-			wantL: 0, wantC: 0,
-		},
-		{
-			name:  "zero_line_zero_column",
-			msg:   "line 0, column 0: something weird",
-			wantL: 0, wantC: 0,
-		},
-		{
-			name:  "large_numbers",
-			msg:   "line 9999, column 512: way out there",
-			wantL: 9999, wantC: 512,
-		},
-		{
-			name:  "column_without_line",
-			msg:   "column 5: orphan column",
-			wantL: 0, wantC: 5,
-		},
-		{
-			name:  "embedded_line_word_matches",
-			msg:   "headline 4 problem",
-			wantL: 4, wantC: 0, // regex `line (\d+)` matches "line" inside "headline"
-		},
-		{
-			name:  "line_at_start",
-			msg:   "line 1 something",
-			wantL: 1, wantC: 0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotL, gotC := ParseLine(tt.msg)
-			if gotL != tt.wantL || gotC != tt.wantC {
-				t.Errorf("ParseLine(%q) = (%d, %d), want (%d, %d)",
-					tt.msg, gotL, gotC, tt.wantL, tt.wantC)
 			}
 		})
 	}
@@ -221,147 +157,245 @@ func TestStripWorkspacePrefix(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestEmitAnnotations(t *testing.T) {
-	t.Run("single_syntax_error_with_error_lines", func(t *testing.T) {
+	t.Run("single_syntax_error", func(t *testing.T) {
 		reports := []reporter.Report{
 			{
-				FilePath:         "/github/workspace/cfg/app.yaml",
-				FileName:         "app.yaml",
-				IsValid:          false,
-				ValidationErrors: []string{"syntax: unexpected indent"},
-				ErrorLines:       []int{5},
-				ErrorColumns:     []int{3},
+				FilePath: "/github/workspace/cfg/app.yaml",
+				FileName: "app.yaml",
+				Status:   reporter.StatusFail,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeSyntax, Message: "unexpected indent", Line: 3, Column: 14},
+				},
 			},
 		}
 		out := captureStdout(func() { EmitAnnotations(reports) })
 
-		want := "::error file=cfg/app.yaml,title=Syntax Error,line=5,col=3::unexpected indent\n"
+		want := "::error file=cfg/app.yaml,title=Syntax Error,line=3,col=14::unexpected indent\n"
 		if out != want {
 			t.Errorf("EmitAnnotations() =\n  %q\nwant\n  %q", out, want)
 		}
 	})
 
-	t.Run("schema_error_prefix", func(t *testing.T) {
+	t.Run("schema_error", func(t *testing.T) {
 		reports := []reporter.Report{
 			{
-				FilePath:         "config.json",
-				FileName:         "config.json",
-				IsValid:          false,
-				ValidationErrors: []string{"schema: missing required field 'name'"},
-				ErrorLines:       []int{10},
-				ErrorColumns:     []int{0},
+				FilePath: "config.json",
+				FileName: "config.json",
+				Status:   reporter.StatusFail,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeSchema, Message: "missing required field 'name'", Line: 10, Column: 0},
+				},
 			},
 		}
 		out := captureStdout(func() { EmitAnnotations(reports) })
 
-		// col is 0 so no ,col= segment
+		// Column is 0 so no ,col= segment
 		want := "::error file=config.json,title=Schema Error,line=10::missing required field 'name'\n"
 		if out != want {
 			t.Errorf("EmitAnnotations() =\n  %q\nwant\n  %q", out, want)
 		}
 	})
 
-	t.Run("fallback_to_parse_line_when_error_lines_empty", func(t *testing.T) {
+	t.Run("format_issue", func(t *testing.T) {
 		reports := []reporter.Report{
 			{
-				FilePath:         "data.toml",
-				FileName:         "data.toml",
-				IsValid:          false,
-				ValidationErrors: []string{"line 8, column 2: invalid key"},
+				FilePath: "style.json",
+				FileName: "style.json",
+				Status:   reporter.StatusUnformatted,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeFormat, Message: "incorrect indentation", Line: 5, Column: 0},
+				},
 			},
 		}
 		out := captureStdout(func() { EmitAnnotations(reports) })
 
-		want := "::error file=data.toml,title=Validation Error,line=8,col=2::line 8, column 2: invalid key\n"
+		want := "::error file=style.json,title=Formatting,line=5::incorrect indentation\n"
 		if out != want {
 			t.Errorf("EmitAnnotations() =\n  %q\nwant\n  %q", out, want)
 		}
 	})
 
-	t.Run("valid_report_is_skipped", func(t *testing.T) {
+	t.Run("status_pass_skipped", func(t *testing.T) {
 		reports := []reporter.Report{
 			{
 				FilePath: "good.json",
 				FileName: "good.json",
-				IsValid:  true,
+				Status:   reporter.StatusPass,
 			},
 		}
 		out := captureStdout(func() { EmitAnnotations(reports) })
 
 		if out != "" {
-			t.Errorf("expected no output for valid report, got %q", out)
+			t.Errorf("expected no output for passing report, got %q", out)
 		}
 	})
 
-	t.Run("coalesce_errors_at_same_file_line_col", func(t *testing.T) {
+	t.Run("line_zero_defaults_to_1", func(t *testing.T) {
 		reports := []reporter.Report{
 			{
-				FilePath:         "app.json",
-				FileName:         "app.json",
-				IsValid:          false,
-				ValidationErrors: []string{"schema: type mismatch", "schema: min length"},
-				ErrorLines:       []int{4, 4},
-				ErrorColumns:     []int{12, 12},
+				FilePath: "bad.ini",
+				FileName: "bad.ini",
+				Status:   reporter.StatusFail,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeSyntax, Message: "unknown format", Line: 0, Column: 0},
+				},
 			},
 		}
 		out := captureStdout(func() { EmitAnnotations(reports) })
 
-		// Should be a single annotation with bullet body
-		if strings.Count(out, "::error") != 1 {
-			t.Errorf("expected 1 ::error annotation, got %d in:\n%s",
-				strings.Count(out, "::error"), out)
-		}
-		if !strings.Contains(out, "2 schema errors found:") {
-			t.Errorf("expected coalesced body with count header, got:\n%s", out)
-		}
-		if !strings.Contains(out, "type mismatch") || !strings.Contains(out, "min length") {
-			t.Errorf("expected both messages in output, got:\n%s", out)
+		want := "::error file=bad.ini,title=Syntax Error,line=1::unknown format\n"
+		if out != want {
+			t.Errorf("EmitAnnotations() =\n  %q\nwant\n  %q", out, want)
 		}
 	})
 
-	t.Run("line_defaults_to_1_when_zero", func(t *testing.T) {
+	t.Run("column_gt_zero_includes_col", func(t *testing.T) {
 		reports := []reporter.Report{
 			{
-				FilePath:         "bad.ini",
-				FileName:         "bad.ini",
-				IsValid:          false,
-				ValidationErrors: []string{"unknown format"},
+				FilePath: "x.json",
+				FileName: "x.json",
+				Status:   reporter.StatusFail,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeSyntax, Message: "bad token", Line: 7, Column: 12},
+				},
 			},
 		}
 		out := captureStdout(func() { EmitAnnotations(reports) })
 
-		// No line info extractable => line defaults to 1
-		if !strings.Contains(out, "line=1") {
-			t.Errorf("expected line=1 fallback, got:\n%s", out)
+		if !strings.Contains(out, ",col=12") {
+			t.Errorf("expected col=12 in output, got:\n%s", out)
 		}
 	})
 
-	t.Run("empty_reports_no_output", func(t *testing.T) {
+	t.Run("column_zero_omits_col", func(t *testing.T) {
+		reports := []reporter.Report{
+			{
+				FilePath: "x.json",
+				FileName: "x.json",
+				Status:   reporter.StatusFail,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeSyntax, Message: "bad token", Line: 7, Column: 0},
+				},
+			},
+		}
+		out := captureStdout(func() { EmitAnnotations(reports) })
+
+		if strings.Contains(out, "col=") {
+			t.Errorf("expected no col= for Column=0, got:\n%s", out)
+		}
+	})
+
+	t.Run("nil_reports_no_output", func(t *testing.T) {
 		out := captureStdout(func() { EmitAnnotations(nil) })
 		if out != "" {
 			t.Errorf("expected no output for nil reports, got %q", out)
 		}
 	})
 
-	t.Run("multiple_reports_multiple_errors", func(t *testing.T) {
+	t.Run("empty_reports_no_output", func(t *testing.T) {
+		out := captureStdout(func() { EmitAnnotations([]reporter.Report{}) })
+		if out != "" {
+			t.Errorf("expected no output for empty reports, got %q", out)
+		}
+	})
+
+	t.Run("multiple_issues_on_same_report", func(t *testing.T) {
 		reports := []reporter.Report{
 			{
-				FilePath:         "a.json",
-				FileName:         "a.json",
-				IsValid:          false,
-				ValidationErrors: []string{"syntax: bad token"},
-				ErrorLines:       []int{1},
-				ErrorColumns:     []int{5},
+				FilePath: "app.json",
+				FileName: "app.json",
+				Status:   reporter.StatusFail,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeSchema, Message: "type mismatch", Line: 4, Column: 12},
+					{Type: reporter.IssueTypeSchema, Message: "min length", Line: 4, Column: 12},
+					{Type: reporter.IssueTypeSyntax, Message: "trailing comma", Line: 10, Column: 0},
+				},
+			},
+		}
+		out := captureStdout(func() { EmitAnnotations(reports) })
+
+		// Each issue produces its own ::error line — no coalescing in v3
+		lines := strings.Split(strings.TrimSpace(out), "\n")
+		if len(lines) != 3 {
+			t.Errorf("expected 3 ::error lines, got %d:\n%s", len(lines), out)
+		}
+		if !strings.Contains(lines[0], "type mismatch") {
+			t.Errorf("first line should contain 'type mismatch', got %q", lines[0])
+		}
+		if !strings.Contains(lines[1], "min length") {
+			t.Errorf("second line should contain 'min length', got %q", lines[1])
+		}
+		if !strings.Contains(lines[2], "trailing comma") {
+			t.Errorf("third line should contain 'trailing comma', got %q", lines[2])
+		}
+	})
+
+	t.Run("workspace_prefix_stripped", func(t *testing.T) {
+		reports := []reporter.Report{
+			{
+				FilePath: "/github/workspace/deep/config.yml",
+				FileName: "config.yml",
+				Status:   reporter.StatusFail,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeSyntax, Message: "oops", Line: 1, Column: 1},
+				},
+			},
+		}
+		out := captureStdout(func() { EmitAnnotations(reports) })
+
+		if strings.Contains(out, "/github/workspace/") {
+			t.Errorf("workspace prefix should be stripped, got:\n%s", out)
+		}
+		if !strings.Contains(out, "file=deep/config.yml") {
+			t.Errorf("expected stripped path in output, got:\n%s", out)
+		}
+	})
+
+	t.Run("message_newlines_escaped", func(t *testing.T) {
+		reports := []reporter.Report{
+			{
+				FilePath: "f.json",
+				FileName: "f.json",
+				Status:   reporter.StatusFail,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeSyntax, Message: "line1\nline2", Line: 1, Column: 0},
+				},
+			},
+		}
+		out := captureStdout(func() { EmitAnnotations(reports) })
+
+		if !strings.Contains(out, "line1%0Aline2") {
+			t.Errorf("expected escaped newline in message, got:\n%s", out)
+		}
+		// The only raw newline should be the trailing \n from Println
+		body := strings.TrimSuffix(out, "\n")
+		if strings.Contains(body, "\n") {
+			t.Errorf("raw newline found in annotation body:\n%s", out)
+		}
+	})
+
+	t.Run("multiple_reports_mixed_statuses", func(t *testing.T) {
+		reports := []reporter.Report{
+			{
+				FilePath: "a.json",
+				FileName: "a.json",
+				Status:   reporter.StatusFail,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeSyntax, Message: "bad token", Line: 1, Column: 5},
+				},
 			},
 			{
 				FilePath: "b.json",
 				FileName: "b.json",
-				IsValid:  true,
+				Status:   reporter.StatusPass,
 			},
 			{
-				FilePath:         "c.yaml",
-				FileName:         "c.yaml",
-				IsValid:          false,
-				ValidationErrors: []string{"line 3: indent error"},
+				FilePath: "c.yaml",
+				FileName: "c.yaml",
+				Status:   reporter.StatusFail,
+				Issues: []reporter.Issue{
+					{Type: reporter.IssueTypeSyntax, Message: "indent error", Line: 3, Column: 0},
+				},
 			},
 		}
 		out := captureStdout(func() { EmitAnnotations(reports) })
@@ -378,65 +412,19 @@ func TestEmitAnnotations(t *testing.T) {
 		}
 	})
 
-	t.Run("error_lines_zero_triggers_parse_line_fallback", func(t *testing.T) {
-		// ErrorLines present but value is 0 — should fallback to ParseLine
+	t.Run("fail_with_no_issues_emits_nothing", func(t *testing.T) {
 		reports := []reporter.Report{
 			{
-				FilePath:         "x.json",
-				FileName:         "x.json",
-				IsValid:          false,
-				ValidationErrors: []string{"line 15, column 4: bad value"},
-				ErrorLines:       []int{0},
-				ErrorColumns:     []int{0},
+				FilePath: "empty.json",
+				FileName: "empty.json",
+				Status:   reporter.StatusFail,
+				Issues:   nil,
 			},
 		}
 		out := captureStdout(func() { EmitAnnotations(reports) })
 
-		if !strings.Contains(out, "line=15") {
-			t.Errorf("expected ParseLine fallback to extract line 15, got:\n%s", out)
-		}
-		if !strings.Contains(out, "col=4") {
-			t.Errorf("expected ParseLine fallback to extract col 4, got:\n%s", out)
-		}
-	})
-
-	t.Run("workspace_prefix_stripped", func(t *testing.T) {
-		reports := []reporter.Report{
-			{
-				FilePath:         "/github/workspace/deep/config.yml",
-				FileName:         "config.yml",
-				IsValid:          false,
-				ValidationErrors: []string{"syntax: oops"},
-				ErrorLines:       []int{1},
-				ErrorColumns:     []int{1},
-			},
-		}
-		out := captureStdout(func() { EmitAnnotations(reports) })
-
-		if strings.Contains(out, "/github/workspace/") {
-			t.Errorf("workspace prefix should be stripped, got:\n%s", out)
-		}
-		if !strings.Contains(out, "file=deep/config.yml") {
-			t.Errorf("expected stripped path in output, got:\n%s", out)
-		}
-	})
-
-	t.Run("multiline_body_escaped", func(t *testing.T) {
-		reports := []reporter.Report{
-			{
-				FilePath:         "f.json",
-				FileName:         "f.json",
-				IsValid:          false,
-				ValidationErrors: []string{"schema: err1", "schema: err2"},
-				ErrorLines:       []int{1, 1},
-				ErrorColumns:     []int{1, 1},
-			},
-		}
-		out := captureStdout(func() { EmitAnnotations(reports) })
-
-		// The coalesced body has newlines that must be escaped as %0A
-		if strings.Contains(out, "• ") && !strings.Contains(out, "%0A") {
-			t.Errorf("expected newlines in body to be escaped, got:\n%s", out)
+		if out != "" {
+			t.Errorf("expected no output for failed report with no issues, got %q", out)
 		}
 	})
 }
@@ -451,6 +439,7 @@ func TestEmitNotes(t *testing.T) {
 			{
 				FilePath: "/github/workspace/pkg/app.json",
 				FileName: "app.json",
+				Status:   reporter.StatusPass,
 				Notes:    []string{"schema validation skipped: no schema found"},
 			},
 		}
@@ -467,11 +456,13 @@ func TestEmitNotes(t *testing.T) {
 			{
 				FilePath: "a.json",
 				FileName: "a.json",
+				Status:   reporter.StatusPass,
 				Notes:    nil,
 			},
 			{
 				FilePath: "b.yaml",
 				FileName: "b.yaml",
+				Status:   reporter.StatusFail,
 				Notes:    []string{},
 			},
 		}
@@ -487,11 +478,13 @@ func TestEmitNotes(t *testing.T) {
 			{
 				FilePath: "first.yml",
 				FileName: "first.yml",
+				Status:   reporter.StatusPass,
 				Notes:    []string{"note A", "note B"},
 			},
 			{
 				FilePath: "second.yml",
 				FileName: "second.yml",
+				Status:   reporter.StatusFail,
 				Notes:    []string{"note C"},
 			},
 		}
@@ -517,6 +510,7 @@ func TestEmitNotes(t *testing.T) {
 			{
 				FilePath: "x.json",
 				FileName: "x.json",
+				Status:   reporter.StatusPass,
 				Notes:    []string{"line1\nline2"},
 			},
 		}
@@ -544,6 +538,7 @@ func TestEmitNotes(t *testing.T) {
 			{
 				FilePath: "/github/workspace/sub/config.ini",
 				FileName: "config.ini",
+				Status:   reporter.StatusPass,
 				Notes:    []string{"some note"},
 			},
 		}

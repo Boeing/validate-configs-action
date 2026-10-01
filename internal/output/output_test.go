@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Boeing/config-file-validator/v2/pkg/reporter"
+	"github.com/Boeing/config-file-validator/v3/pkg/reporter"
 )
 
 // helper creates a temp file for GITHUB_OUTPUT, sets the env var via t.Setenv
@@ -44,14 +44,14 @@ func TestWriteOutputs_GithubOutputNotSet(t *testing.T) {
 	t.Setenv("GITHUB_OUTPUT", "")
 
 	// Should not panic or create any file.
-	WriteOutputs([]reporter.Report{{IsValid: true}}, 0)
+	WriteOutputs([]reporter.Report{{Status: reporter.StatusPass}}, 0)
 }
 
 func TestWriteOutputs_AllValid(t *testing.T) {
 	reports := []reporter.Report{
-		{FilePath: "a", FileName: "a.json", IsValid: true},
-		{FilePath: "b", FileName: "b.yaml", IsValid: true},
-		{FilePath: "c", FileName: "c.toml", IsValid: true},
+		{FilePath: "a", FileName: "a.json", Status: reporter.StatusPass},
+		{FilePath: "b", FileName: "b.yaml", Status: reporter.StatusPass},
+		{FilePath: "c", FileName: "c.toml", Status: reporter.StatusPass},
 	}
 
 	got := runWriteOutputs(t, reports, 0)
@@ -63,11 +63,11 @@ func TestWriteOutputs_AllValid(t *testing.T) {
 
 func TestWriteOutputs_MixedValidAndInvalid(t *testing.T) {
 	reports := []reporter.Report{
-		{FilePath: "a", FileName: "a.json", IsValid: true},
-		{FilePath: "b", FileName: "b.yaml", IsValid: false, ValidationErrors: []string{"bad indent"}},
-		{FilePath: "c", FileName: "c.toml", IsValid: true},
-		{FilePath: "d", FileName: "d.xml", IsValid: false, ValidationErrors: []string{"unclosed tag"}},
-		{FilePath: "e", FileName: "e.ini", IsValid: true},
+		{FilePath: "a", FileName: "a.json", Status: reporter.StatusPass},
+		{FilePath: "b", FileName: "b.yaml", Status: reporter.StatusFail, Issues: []reporter.Issue{{Type: reporter.IssueTypeSyntax, Message: "bad indent"}}},
+		{FilePath: "c", FileName: "c.toml", Status: reporter.StatusPass},
+		{FilePath: "d", FileName: "d.xml", Status: reporter.StatusFail, Issues: []reporter.Issue{{Type: reporter.IssueTypeSyntax, Message: "unclosed tag"}}},
+		{FilePath: "e", FileName: "e.ini", Status: reporter.StatusPass},
 	}
 
 	got := runWriteOutputs(t, reports, 1)
@@ -79,9 +79,9 @@ func TestWriteOutputs_MixedValidAndInvalid(t *testing.T) {
 
 func TestWriteOutputs_AllInvalid(t *testing.T) {
 	reports := []reporter.Report{
-		{FilePath: "a", FileName: "a.json", IsValid: false, ValidationErrors: []string{"err1"}},
-		{FilePath: "b", FileName: "b.yaml", IsValid: false, ValidationErrors: []string{"err2"}},
-		{FilePath: "c", FileName: "c.toml", IsValid: false, ValidationErrors: []string{"err3"}},
+		{FilePath: "a", FileName: "a.json", Status: reporter.StatusFail, Issues: []reporter.Issue{{Type: reporter.IssueTypeSyntax, Message: "err1"}}},
+		{FilePath: "b", FileName: "b.yaml", Status: reporter.StatusFail, Issues: []reporter.Issue{{Type: reporter.IssueTypeSyntax, Message: "err2"}}},
+		{FilePath: "c", FileName: "c.toml", Status: reporter.StatusFail, Issues: []reporter.Issue{{Type: reporter.IssueTypeSyntax, Message: "err3"}}},
 	}
 
 	got := runWriteOutputs(t, reports, 1)
@@ -101,7 +101,7 @@ func TestWriteOutputs_EmptyReports(t *testing.T) {
 
 func TestWriteOutputs_ExitCode1(t *testing.T) {
 	reports := []reporter.Report{
-		{FilePath: "a", FileName: "a.json", IsValid: false, ValidationErrors: []string{"syntax error"}},
+		{FilePath: "a", FileName: "a.json", Status: reporter.StatusFail, Issues: []reporter.Issue{{Type: reporter.IssueTypeSyntax, Message: "syntax error"}}},
 	}
 
 	got := runWriteOutputs(t, reports, 1)
@@ -128,8 +128,8 @@ func TestWriteOutputs_ExactFormat(t *testing.T) {
 	// Verify the entire output matches the expected format exactly —
 	// three lines, each terminated by a newline.
 	reports := []reporter.Report{
-		{FilePath: "x", FileName: "x.json", IsValid: true},
-		{FilePath: "y", FileName: "y.json", IsValid: false, ValidationErrors: []string{"bad"}},
+		{FilePath: "x", FileName: "x.json", Status: reporter.StatusPass},
+		{FilePath: "y", FileName: "y.json", Status: reporter.StatusFail, Issues: []reporter.Issue{{Type: reporter.IssueTypeSyntax, Message: "bad"}}},
 	}
 
 	got := runWriteOutputs(t, reports, 1)

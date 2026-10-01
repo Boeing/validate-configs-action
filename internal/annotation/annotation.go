@@ -2,91 +2,39 @@ package annotation
 
 import (
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 
-	"github.com/Boeing/config-file-validator/v2/pkg/reporter"
+	"github.com/Boeing/config-file-validator/v3/pkg/reporter"
 )
-
-var (
-	reLineNum = regexp.MustCompile(`line (\d+)`)
-	reColNum  = regexp.MustCompile(`column (\d+)`)
-)
-
-type annotationGroup struct {
-	file  string
-	line  int
-	col   int
-	title string
-	msgs  []string
-}
 
 // StripWorkspacePrefix removes the /github/workspace/ prefix from file paths.
 func StripWorkspacePrefix(path string) string {
 	return strings.TrimPrefix(path, "/github/workspace/")
 }
 
-// EmitAnnotations writes GitHub Actions error annotations for failed reports.
+// EmitAnnotations writes GitHub Actions error annotations for non-passing reports.
 func EmitAnnotations(reports []reporter.Report) {
-	groups := map[string]*annotationGroup{}
-	var order []string
-
 	for i := range reports {
-		if reports[i].IsValid {
+		if reports[i].Status == reporter.StatusPass {
 			continue
 		}
 
 		path := StripWorkspacePrefix(reports[i].FilePath)
 
-		for j, errMsg := range reports[i].ValidationErrors {
-			title := "Validation Error"
-			msg := errMsg
-			if strings.HasPrefix(errMsg, "schema: ") {
-				title = "Schema Error"
-				msg = errMsg[8:]
-			} else if strings.HasPrefix(errMsg, "syntax: ") {
-				title = "Syntax Error"
-				msg = errMsg[8:]
-			}
-
-			var line, col int
-			if j < len(reports[i].ErrorLines) && reports[i].ErrorLines[j] > 0 {
-				line = reports[i].ErrorLines[j]
-			}
-			if j < len(reports[i].ErrorColumns) && reports[i].ErrorColumns[j] > 0 {
-				col = reports[i].ErrorColumns[j]
-			}
+		for _, issue := range reports[i].Issues {
+			title := classifyIssue(issue.Type)
+			line := issue.Line
 			if line == 0 {
-				line, col = ParseLine(msg)
+				line = 1
 			}
 
-			key := fmt.Sprintf("%s|%d|%d|%s", path, line, col, title)
-			if a, ok := groups[key]; ok {
-				a.msgs = append(a.msgs, msg)
-			} else {
-				groups[key] = &annotationGroup{
-					file: path, line: line, col: col,
-					title: title, msgs: []string{msg},
-				}
-				order = append(order, key)
+			cmd := fmt.Sprintf("::error file=%s,title=%s,line=%d", path, title, line)
+			if issue.Column > 0 {
+				cmd += fmt.Sprintf(",col=%d", issue.Column)
 			}
+			cmd += "::" + EscapeAnnotation(issue.Message)
+			fmt.Println(cmd)
 		}
-	}
-
-	for _, key := range order {
-		a := groups[key]
-		body := FormatBody(a.title, a.msgs)
-		line := a.line
-		if line == 0 {
-			line = 1
-		}
-		cmd := fmt.Sprintf("::error file=%s,title=%s,line=%d", a.file, a.title, line)
-		if a.col > 0 {
-			cmd += fmt.Sprintf(",col=%d", a.col)
-		}
-		cmd += "::" + EscapeAnnotation(body)
-		fmt.Println(cmd)
 	}
 }
 
@@ -103,17 +51,6 @@ func EmitNotes(reports []reporter.Report) {
 	}
 }
 
-// ParseLine extracts line and column numbers from an error message using regex.
-func ParseLine(msg string) (line, col int) {
-	if m := reLineNum.FindStringSubmatch(msg); len(m) > 1 {
-		line, _ = strconv.Atoi(m[1])
-	}
-	if m := reColNum.FindStringSubmatch(msg); len(m) > 1 {
-		col, _ = strconv.Atoi(m[1])
-	}
-	return line, col
-}
-
 // FormatBody formats one or more messages into an annotation body.
 func FormatBody(title string, msgs []string) string {
 	if len(msgs) == 1 {
@@ -121,7 +58,21 @@ func FormatBody(title string, msgs []string) string {
 	}
 	lines := []string{fmt.Sprintf("%d %ss found:", len(msgs), strings.ToLower(title))}
 	for _, m := range msgs {
-		lines = append(lines, "• "+m)
+		lines = append(lines, "\u2022 "+m)
 	}
 	return strings.Join(lines, "\n")
+}
+
+// classifyIssue maps a v3 IssueType to a human-readable annotation title.
+func classifyIssue(t reporter.IssueType) string {
+	switch t {
+	case reporter.IssueTypeSyntax:
+		return "Syntax Error"
+	case reporter.IssueTypeSchema:
+		return "Schema Error"
+	case reporter.IssueTypeFormat:
+		return "Formatting"
+	default:
+		return "Validation Error"
+	}
 }

@@ -7,9 +7,10 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 
-	"github.com/Boeing/config-file-validator/v2/pkg/filetype"
-	"github.com/Boeing/config-file-validator/v2/pkg/finder"
-	"github.com/Boeing/config-file-validator/v2/pkg/tools"
+	"github.com/Boeing/config-file-validator/v3/pkg/cli"
+	"github.com/Boeing/config-file-validator/v3/pkg/filetype"
+	"github.com/Boeing/config-file-validator/v3/pkg/finder"
+	"github.com/Boeing/config-file-validator/v3/pkg/tools"
 )
 
 // ParseTypeMap parses a comma-separated list of pattern:type mappings into TypeOverrides.
@@ -34,15 +35,17 @@ func ParseTypeMap(input string) ([]finder.TypeOverride, error) {
 	return overrides, nil
 }
 
-// ParseSchemaMap parses a comma-separated list of pattern:schema mappings.
-func ParseSchemaMap(input string) (map[string]string, error) {
-	result := make(map[string]string)
-	for _, mapping := range strings.Split(input, ",") {
+// ParseSchemaMap parses a comma-separated list of pattern:schema mappings
+// into an ordered slice of cli.SchemaMapping (first match wins).
+func ParseSchemaMap(input string) ([]cli.SchemaMapping, error) {
+	mappings := strings.Split(input, ",")
+	result := make([]cli.SchemaMapping, 0, len(mappings))
+	for _, mapping := range mappings {
 		parts := strings.SplitN(mapping, ":", 2)
 		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 			return nil, fmt.Errorf("invalid schema-map format %q", mapping)
 		}
-		result[parts[0]] = parts[1]
+		result = append(result, cli.SchemaMapping{Pattern: parts[0], SchemaPath: parts[1]})
 	}
 	return result, nil
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Boeing/config-file-validator/v2/pkg/reporter"
+	"github.com/Boeing/config-file-validator/v3/pkg/reporter"
 )
 
 // WriteOutputs writes action outputs (files-validated, files-failed, exit-code)
@@ -18,7 +18,7 @@ func WriteOutputs(reports []reporter.Report, exitCode int) {
 	total := len(reports)
 	failed := 0
 	for i := range reports {
-		if !reports[i].IsValid {
+		if reports[i].Status == reporter.StatusFail {
 			failed++
 		}
 	}

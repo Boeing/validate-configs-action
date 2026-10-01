@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Boeing/config-file-validator/v2/pkg/finder"
+	"github.com/Boeing/config-file-validator/v3/pkg/finder"
 )
 
 // mockFinder implements finder.FileFinder for testing.

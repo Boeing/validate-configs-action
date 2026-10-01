@@ -6,7 +6,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/Boeing/config-file-validator/v2/pkg/filetype"
+	"github.com/Boeing/config-file-validator/v3/pkg/cli"
+	"github.com/Boeing/config-file-validator/v3/pkg/filetype"
 )
 
 // ---------- ParseTypeMap ----------
@@ -133,20 +134,20 @@ func TestParseSchemaMap(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
-		want    map[string]string
+		want    []cli.SchemaMapping
 		wantErr bool
 	}{
 		{
 			name:  "valid single mapping",
 			input: "**/pkg.json:schemas/pkg.schema.json",
-			want:  map[string]string{"**/pkg.json": "schemas/pkg.schema.json"},
+			want:  []cli.SchemaMapping{{Pattern: "**/pkg.json", SchemaPath: "schemas/pkg.schema.json"}},
 		},
 		{
 			name:  "valid multiple mappings",
 			input: "**/a.json:schemas/a.json,**/b.yaml:schemas/b.yaml",
-			want: map[string]string{
-				"**/a.json": "schemas/a.json",
-				"**/b.yaml": "schemas/b.yaml",
+			want: []cli.SchemaMapping{
+				{Pattern: "**/a.json", SchemaPath: "schemas/a.json"},
+				{Pattern: "**/b.yaml", SchemaPath: "schemas/b.yaml"},
 			},
 		},
 		{
@@ -181,14 +182,12 @@ func TestParseSchemaMap(t *testing.T) {
 			if len(got) != len(tc.want) {
 				t.Fatalf("len = %d, want %d", len(got), len(tc.want))
 			}
-			for k, wantV := range tc.want {
-				gotV, ok := got[k]
-				if !ok {
-					t.Errorf("missing key %q", k)
-					continue
+			for i, wantM := range tc.want {
+				if got[i].Pattern != wantM.Pattern {
+					t.Errorf("[%d].Pattern = %q, want %q", i, got[i].Pattern, wantM.Pattern)
 				}
-				if gotV != wantV {
-					t.Errorf("got[%q] = %q, want %q", k, gotV, wantV)
+				if got[i].SchemaPath != wantM.SchemaPath {
+					t.Errorf("[%d].SchemaPath = %q, want %q", i, got[i].SchemaPath, wantM.SchemaPath)
 				}
 			}
 		})

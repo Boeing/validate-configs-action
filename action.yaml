@@ -51,7 +51,7 @@ inputs:
   schemastore:
     description: 'If set to true, enables automatic schema lookup using the embedded SchemaStore catalog with remote fetching'
     required: false
-    default: "false"
+    default: "true"
   schemastore-path:
     description: 'Path to a local SchemaStore clone for automatic schema lookup (implies schemastore). For air-gapped environments'
     required: false

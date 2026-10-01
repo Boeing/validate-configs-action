@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Boeing/config-file-validator/v2/pkg/reporter"
+	"github.com/Boeing/config-file-validator/v3/pkg/reporter"
 )
 
 // WriteJobSummary writes a markdown summary to GITHUB_STEP_SUMMARY.
@@ -20,11 +20,11 @@ func WriteJobSummary(reports []reporter.Report) {
 	failed := 0
 	var failedReports []reporter.Report
 	for i := range reports {
-		if reports[i].IsValid {
-			passed++
-		} else {
+		if reports[i].Status == reporter.StatusFail {
 			failed++
 			failedReports = append(failedReports, reports[i])
+		} else {
+			passed++
 		}
 	}
 
@@ -50,7 +50,11 @@ func WriteJobSummary(reports []reporter.Report) {
 	_, _ = fmt.Fprintf(f, "| File | Errors |\n|---|---|\n")
 	for i := range failedReports {
 		path := strings.TrimPrefix(failedReports[i].FilePath, "/github/workspace/")
-		errors := strings.Join(failedReports[i].ValidationErrors, "<br>")
+		var msgs []string
+		for _, issue := range failedReports[i].Issues {
+			msgs = append(msgs, issue.Message)
+		}
+		errors := strings.Join(msgs, "<br>")
 		_, _ = fmt.Fprintf(f, "| `%s` | %s |\n", path, errors)
 	}
 }

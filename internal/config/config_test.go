@@ -86,7 +86,7 @@ func TestLoad_Defaults(t *testing.T) {
 		{"Globbing", cfg.Globbing, "false"},
 		{"RequireSchema", cfg.RequireSchema, "false"},
 		{"NoSchema", cfg.NoSchema, "false"},
-		{"SchemaStore", cfg.SchemaStore, "false"},
+		{"SchemaStore", cfg.SchemaStore, "true"},
 		{"Gitignore", cfg.Gitignore, "false"},
 		{"OnlyChanged", cfg.OnlyChanged, "false"},
 	}
