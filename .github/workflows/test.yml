@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -34,7 +34,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -58,7 +58,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -73,7 +73,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -90,7 +90,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -108,7 +108,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -125,7 +125,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -142,7 +142,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -168,7 +168,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -186,7 +186,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -203,7 +203,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -220,7 +220,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -237,7 +237,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -254,7 +254,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -270,7 +270,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -287,7 +287,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -312,7 +312,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -332,7 +332,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -349,7 +349,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -382,7 +382,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -398,7 +398,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -422,7 +422,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -439,7 +439,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - run: echo "failing/" >> test/.gitignore
@@ -457,7 +457,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -481,7 +481,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -504,7 +504,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -522,7 +522,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -540,7 +540,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -557,7 +557,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -576,7 +576,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - name: Create .cfv.toml with 4-space indent
@@ -606,7 +606,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -635,7 +635,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
       - uses: ./
@@ -656,7 +656,7 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
-      - uses: extractions/setup-just@dd310ad5a97d8e7b02c5dd14e52846886820a352 # v2.0.0
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
       - name: Build binary
         run: just build
 
