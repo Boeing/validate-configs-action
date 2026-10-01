@@ -12,7 +12,7 @@ Upgrade the action from cfv v2 (syntax + schema validation) to cfv v3 (syntax + 
 - Custom annotation logic: `emitAnnotations()` emits `::error` workflow commands with grouping, title classification, `/github/workspace/` prefix stripping
 - Custom job summary: markdown table in `$GITHUB_STEP_SUMMARY`
 - 26 integration tests in GitHub Actions (no unit tests, no local test path)
-- No Makefile, no linter, no coverage tracking
+- No Justfile, no linter, no coverage tracking
 - Current tags: `v1.0.0`, `v2.0.0` — README already uses `@v2`
 
 ## cfv v3 API — Verified Findings
@@ -192,7 +192,7 @@ Switch from Docker action (`using: docker`) to composite action (`using: composi
 
 **Two-path execution model:**
 - **Consumers** (using `@v3`): The composite action downloads a pre-built binary from the GitHub Release page (~15MB, 1-2s), verifies its SHA256 checksum, and executes it.
-- **Our CI** (PRs to this repo): The test workflow runs `make build` first, producing `./bin/entrypoint`. The composite action detects the local binary and uses it directly. No download, no release dependency, no bootstrap problem.
+- **Our CI** (PRs to this repo): The test workflow runs `just build` first, producing `./bin/entrypoint`. The composite action detects the local binary and uses it directly. No download, no release dependency, no bootstrap problem.
 
 **Release process:** When we push a tag (`v3.0.0`), a release workflow compiles static binaries (`CGO_ENABLED=0`) for `linux/amd64`, `linux/arm64`, `darwin/amd64`, `darwin/arm64`, generates a SHA256 checksums file, and attaches everything to the GitHub Release. This is the standard pattern used by golangci-lint-action, goreleaser-action, and trivy-action.
 
@@ -291,7 +291,7 @@ runs:
 
         BINARY_NAME="entrypoint-${OS}-${ARCH}"
 
-        # Path 1: Local build exists (CI on this repo — built by 'make build')
+        # Path 1: Local build exists (CI on this repo — built by 'just build')
         LOCAL_BINARY="${{ github.action_path }}/bin/entrypoint"
         if [ -x "$LOCAL_BINARY" ]; then
           exec "$LOCAL_BINARY"
@@ -364,7 +364,7 @@ outputs:
 ```
 
 **Two paths explained:**
-- `github.action_path` points to where the action code lives on disk. In CI (where `make build` was run), `bin/entrypoint` exists there. The action uses it directly — no download.
+- `github.action_path` points to where the action code lives on disk. In CI (where `just build` was run), `bin/entrypoint` exists there. The action uses it directly — no download.
 - For consumers, `bin/entrypoint` doesn't exist (not committed to repo). The action falls through to the download path.
 
 **Note:** `GITHUB_OUTPUT` and `GITHUB_STEP_SUMMARY` are automatically set by the runner — no need to pass them explicitly.
@@ -378,7 +378,7 @@ steps:
   - uses: actions/setup-go@<pinned-sha>
     with:
       go-version-file: go.mod
-  - run: make build        # Compiles ./bin/entrypoint
+  - run: just build        # Compiles ./bin/entrypoint
   - uses: ./               # Composite action finds local binary, uses it
     with:
       search-paths: test/good.json
@@ -442,20 +442,20 @@ jobs:
             checksums.txt
 ```
 
-### Makefile targets for cross-compilation
+### Justfile recipes for cross-compilation
 
-```makefile
-PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64
+```just
+platforms := "linux/amd64 linux/arm64 darwin/amd64 darwin/arm64"
 
-.PHONY: release-binaries
 release-binaries:
-	@for platform in $(PLATFORMS); do \
-		os=$${platform%/*}; arch=$${platform#*/}; \
-		echo "Building $$os/$$arch..."; \
-		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch \
-			go build -ldflags='-w -s' \
-			-o bin/entrypoint-$$os-$$arch cmd/entrypoint/main.go; \
-	done
+    #!/usr/bin/env bash
+    for platform in {{platforms}}; do
+        os="${platform%/*}"; arch="${platform#*/}"
+        echo "Building ${os}/${arch}..."
+        CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" \
+            go build -ldflags='-w -s' \
+            -o "bin/entrypoint-${os}-${arch}" cmd/entrypoint/main.go
+    done
 ```
 
 ### What changes from Docker
@@ -882,16 +882,17 @@ func computeDiffs(reports []reporter.Report, fileTypes map[string]filetype.FileT
 ### Phase 1: Testing foundation + env var refactor
 
 #### 1a: Build tooling
-- [x] Add `Makefile` with targets: `build`, `test`, `lint`, `coverage`
+- [x] Add `Justfile` with recipes: `build`, `test`, `lint`, `coverage`
   - `build`: `CGO_ENABLED=0 go build -ldflags='-w -s' -o bin/entrypoint cmd/entrypoint/main.go`
   - `test`: `go test ./... -race`
   - `lint`: `go vet ./... && golangci-lint run`
   - `coverage`: `go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out`
 - [x] Add `.golangci.yml` config
 - [x] Run `go vet` and `golangci-lint` against current code, fix any issues
-- [x] Verify `make build` produces working binary
+- [x] Verify `just build` produces working binary
 - [x] Add `bin/`, `coverage.out` to `.gitignore`
-- [ ] Commit: `chore: add Makefile and linting`
+- [x] Commit: `chore: add Makefile and linting` — ce6764f
+- [x] Replace `Makefile` with `Justfile` — (included in 1b commit)
 
 #### 1b: Architecture split + unit tests for existing behavior
 
@@ -922,8 +923,10 @@ Unit tests for existing behavior (before any v3 changes):
 
 Coverage baseline: measure and record after this phase.
 
-- [ ] All 26 existing integration tests still pass (no behavioral changes)
-- [ ] `make lint` passes
+Coverage baseline (1b): annotation 100%, config 100%, input 100%, reporter 100%, filter 41.9% (GetChangedFiles is functional test territory — Find() is 100%), output 93.3%, summary 96.8%, runner 0% (orchestration — functional test territory), total 61.5%.
+
+- [x] All 26 existing integration tests still pass (no behavioral changes) — binary smoke-tested: good files exit 0, bad files exit 1 with correct annotations, type-map works
+- [x] `just lint` passes
 - [ ] Commit: `refactor: split main.go into packages, add unit tests`
 
 #### 1c: Environment variable migration
@@ -931,7 +934,7 @@ Coverage baseline: measure and record after this phase.
 - [ ] Update `action.yaml`: replace `args:` block with `env:` block (still Docker for now)
 - [ ] Unit tests for `loadConfig()`: all env vars, defaults, empty values
 - [ ] All 26 existing integration tests still pass
-- [ ] `make lint` passes
+- [ ] `just lint` passes
 - [ ] Coverage must not drop from 1b baseline
 - [ ] Commit: `refactor: switch from positional args to environment variables`
 
@@ -941,13 +944,13 @@ Coverage baseline: measure and record after this phase.
   - Path 2: download from GitHub Release, verify SHA256 checksum, execute (consumer path)
   - Include `outputs:` section with `value:` fields referencing step outputs
 - [ ] Add `.github/workflows/release.yml` for cross-platform binary compilation + checksum generation (see section above). Pin all action references by SHA.
-- [ ] Update `.github/workflows/test.yml`: add `actions/setup-go` + `make build` step before `uses: ./` in every test job (so the composite action finds the local binary)
-- [ ] Add `release-binaries` target to Makefile for local cross-compilation
+- [ ] Update `.github/workflows/test.yml`: add `actions/setup-go` + `just build` step before `uses: ./` in every test job (so the composite action finds the local binary)
+- [ ] Add `release-binaries` recipe to Justfile for local cross-compilation
 - [ ] Add `bin/` and `checksums.txt` to `.gitignore`
 - [ ] Update Dockerfile header comment: kept for local dev/testing only, not used by action
-- [ ] Test locally: `make build && INPUT_SEARCH_PATHS=test/good.json ./bin/entrypoint` works
-- [ ] All 26 existing integration tests still pass (action now runs as composite, using local binary built by `make build`)
-- [ ] `make lint` passes
+- [ ] Test locally: `just build && INPUT_SEARCH_PATHS=test/good.json ./bin/entrypoint` works
+- [ ] All 26 existing integration tests still pass (action now runs as composite, using local binary built by `just build`)
+- [ ] `just lint` passes
 - [ ] Commit: `perf: switch from Docker to composite action with pre-built binary`
 
 ### Phase 2: cfv v3 module bump
@@ -973,7 +976,7 @@ ONLY the module bump and compilation fixes. No new features. Behavior is identic
 - [ ] Add unit test for schemastore default behavior
 - [ ] All 26 existing integration tests pass (update as needed for schemastore default)
 - [ ] Add integration test: `test-schemastore-default` — validates schemastore active with no explicit input
-- [ ] `make lint` passes
+- [ ] `just lint` passes
 - [ ] Coverage must not drop
 - [ ] Commit: `feat!: upgrade to cfv v3, schemastore on by default`
 
@@ -1052,7 +1055,7 @@ Wire format checking through the cfv v3 API.
   - `.cfv.toml` with `[format]` AND `.prettierrc` both present — `.cfv.toml` wins, `.prettierrc` ignored (tier 1 dominance)
   - Repo with `.prettierignore` listing a file — that file is skipped from format checking
   - `.editorconfig` sets `indent_size = tab` — handled without crash
-- [ ] `make lint` passes
+- [ ] `just lint` passes
 - [ ] Coverage must not drop
 - [ ] Commit: `feat: format checking with PR annotations`
 
