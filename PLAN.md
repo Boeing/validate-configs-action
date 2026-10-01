@@ -1196,22 +1196,16 @@ After ALL fixes:
 
 ### Phase 4: Documentation + release
 
-- [ ] Rewrite README for v3 action features
-- [ ] Add migration guide (v2 → v3):
-  - `schemastore` now defaults to `true` — set `schemastore: "false"` to restore old behavior
-  - `$schema` auto-resolution removed — use `schema-map` for custom schemas
-  - Format checking enabled by default (`warn` mode) — set `format-check: "off"` to disable
-  - New inputs: `format-check`, `no-config`, `config`
-  - New output: `files-unformatted`
-  - Version: `@v2` → `@v3`
-  - Now runs as composite action (faster startup, no Docker required)
-- [ ] Add workflow examples: minimal, format enforcement, schema validation, only-changed, disable-format
-- [ ] Create CHANGELOG.md
-- [ ] Verify release workflow: push a test tag, confirm binaries are compiled and attached for all 4 platforms
-- [ ] Update GitHub Marketplace listing
-- [ ] Tag `v3.0.0` — release workflow auto-compiles and attaches binaries
-- [ ] Verify the `v3` major version tag points to `v3.0.0`
-- [ ] Commit: `docs: v3 README, migration guide, and marketplace update`
+- [x] Rewrite README for v3 action features
+- [x] Add migration guide (v2 → v3): MIGRATION.md created
+- [x] Add workflow examples: included in README (format checking, config file, kitchen sink updated)
+- [x] Create CHANGELOG.md
+- [ ] Verify release workflow: push a test tag, confirm binaries are compiled and attached for all 4 platforms — DEFERRED (requires push access)
+- [ ] Update GitHub Marketplace listing — DEFERRED (requires GitHub web UI)
+- [ ] Tag `v3.0.0` — DEFERRED (requires push access)
+- [ ] Verify the `v3` major version tag points to `v3.0.0` — DEFERRED (requires push access)
+- [x] `just build`, `just lint`, `just test` all pass
+- [x] Commit: `docs: v3 README, migration guide, and changelog` — c67e3f1
 
 ## Example Workflows (for README)
 
