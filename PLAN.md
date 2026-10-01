@@ -936,21 +936,20 @@ Coverage baseline (1b): annotation 100%, config 100%, input 100%, reporter 100%,
 - [x] All 26 existing integration tests still pass — binary smoke-tested with env vars: good files, bad files, json reporter, type-map all work
 - [x] `just lint` passes
 - [x] Coverage must not drop from 1b baseline — config still 100%
-- [ ] Commit: `refactor: switch from positional args to environment variables`
+- [x] Commit: `refactor: switch from positional args to environment variables` — ff534ed
 
 #### 1d: Switch to composite action with pre-built binary
-- [ ] Update `action.yaml`: change `using: docker` to `using: composite` with two-path shell step (see "Composite Action Architecture" section):
+- [x] Update `action.yaml`: change `using: docker` to `using: composite` with two-path shell step (see "Composite Action Architecture" section):
   - Path 1: detect `bin/entrypoint` at `github.action_path` → use it (CI path)
   - Path 2: download from GitHub Release, verify SHA256 checksum, execute (consumer path)
   - Include `outputs:` section with `value:` fields referencing step outputs
-- [ ] Add `.github/workflows/release.yml` for cross-platform binary compilation + checksum generation (see section above). Pin all action references by SHA.
-- [ ] Update `.github/workflows/test.yml`: add `actions/setup-go` + `just build` step before `uses: ./` in every test job (so the composite action finds the local binary)
-- [ ] Add `release-binaries` recipe to Justfile for local cross-compilation
-- [ ] Add `bin/` and `checksums.txt` to `.gitignore`
-- [ ] Update Dockerfile header comment: kept for local dev/testing only, not used by action
-- [ ] Test locally: `just build && INPUT_SEARCH_PATHS=test/good.json ./bin/entrypoint` works
-- [ ] All 26 existing integration tests still pass (action now runs as composite, using local binary built by `just build`)
-- [ ] `just lint` passes
+- [x] Add `.github/workflows/release.yml` for cross-platform binary compilation + checksum generation (see section above). Pin all action references by SHA.
+- [x] Update `.github/workflows/test.yml`: add `actions/setup-go` + `setup-just` + `just build` step before `uses: ./` in every test job (25 jobs updated)
+- [x] Add `release-binaries` recipe to Justfile for local cross-compilation (already present from 1a)
+- [x] Add `bin/` and `checksums.txt` to `.gitignore`
+- [x] Update Dockerfile header comment: kept for local dev/testing only, not used by action
+- [x] Test locally: `just build && INPUT_SEARCH_PATHS=test/good.json ./bin/entrypoint` works
+- [x] `just build`, `just lint`, `just test` all pass
 - [ ] Commit: `perf: switch from Docker to composite action with pre-built binary`
 
 ### Phase 2: cfv v3 module bump
