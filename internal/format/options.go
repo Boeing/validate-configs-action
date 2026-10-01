@@ -59,6 +59,8 @@ func BuildFormatOptionsFunc(cfvCfg *configfile.Config, noConfig bool) (cli.Forma
 	}
 
 	// Tier 2: no .cfv.toml — per-format external tool config ownership.
+	// cfv's config loaders return nil when no config file is found.
+	// This is not an error — it means the tool isn't configured.
 	editorCfg := formatter.NewEditorConfig()
 	prettierCfg := formatter.NewPrettierConfig()
 	taploCfg := formatter.LoadTaplo(".")

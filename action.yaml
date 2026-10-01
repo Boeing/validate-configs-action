@@ -128,6 +128,10 @@ runs:
 
         # Path 2: Download pre-built binary from GitHub Release (consumer path)
         ACTION_VERSION="${GITHUB_ACTION_REF:-v3.0.0}"
+        if [[ ! "$ACTION_VERSION" =~ ^v[0-9] ]]; then
+          echo "::error::validate-configs-action must be pinned to a release tag (e.g., @v3 or @v3.0.0), not '${ACTION_VERSION}'"
+          exit 2
+        fi
         ACTION_REPO="Boeing/validate-configs-action"
         RELEASE_URL="https://github.com/${ACTION_REPO}/releases/download/${ACTION_VERSION}"
         BINARY_PATH="${{ runner.temp }}/cfv-action"

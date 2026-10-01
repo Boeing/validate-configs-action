@@ -1,3 +1,4 @@
+# TODO: extract common setup (checkout, setup-go, setup-just, build) into reusable workflow
 name: Validate Configs Action Test
 on:
   push:

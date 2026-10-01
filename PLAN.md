@@ -1207,6 +1207,41 @@ After ALL fixes:
 - [x] `just build`, `just lint`, `just test` all pass
 - [x] Commit: `docs: v3 README, migration guide, and changelog` — c67e3f1
 
+### Phase 4.5: Second Code Review Remediation
+
+Address ALL findings from second contextless review (0 CRITICAL, 2 HIGH known debt, 4 MEDIUM, 6 LOW, 2 NIT).
+
+#### Fix 3 (MEDIUM): `only-changed` hard error on failure
+**File:** `internal/runner/runner.go` lines 129-135
+**Change:** Replace warning+continue with hard error (exit 2) when `GetChangedFiles()` fails and `only-changed` was explicitly requested.
+**Test:** `INPUT_ONLY_CHANGED=true` without `GITHUB_BASE_REF` → exit 2.
+
+#### Fix 4 (MEDIUM): `GITHUB_ACTION_REF` validation
+**File:** `action.yaml` line ~130
+**Change:** Add regex check `^v[0-9]` before download. Error if consumer uses `@main` or `@sha`.
+
+#### Fix 5 (MEDIUM): Markdown pipe escaping in summary
+**File:** `internal/summary/summary.go` line ~75
+**Change:** Escape `|` → `\|` in error messages before interpolating into markdown table.
+**Test:** Add test with pipe in error message.
+
+#### Fix 14 (MEDIUM): Release workflow test gate
+**File:** `.github/workflows/release.yml`
+**Change:** Add `test` job (lint+test) before `build` matrix. `build` depends on `test`.
+
+#### Fix 15 (LOW): Mutual exclusivity validation
+**File:** `internal/runner/runner.go`
+**Change:** Add 3 checks: file-types+exclude-file-types, no-schema+require-schema, globbing+filters.
+**Test:** Binary smoke tests for each pair → exit 2.
+
+#### Fixes 1+2, 6, 7, 8, 13 (LOW/NIT): TODO comments
+Comment-only changes documenting known debt and design decisions.
+
+#### Verification
+- [ ] `just build`, `just lint`, `just test` pass
+- [ ] Binary smoke tests: only-changed error, mutual exclusivity errors, all existing tests
+- [ ] Commit: `fix: address second code review findings`
+
 ## Example Workflows (for README)
 
 ### Minimal — validate + format warnings

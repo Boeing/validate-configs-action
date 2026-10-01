@@ -423,3 +423,28 @@ func TestWriteJobSummary_UnformattedFilesListed(t *testing.T) {
 		t.Error("expected total of 3 in summary table")
 	}
 }
+
+func TestWriteJobSummary_PipeInErrorEscaped(t *testing.T) {
+	path := setupSummaryFile(t)
+
+	WriteJobSummary([]reporter.Report{
+		{
+			FilePath: "config.json",
+			FileName: "config.json",
+			Status:   reporter.StatusFail,
+			Issues: []reporter.Issue{{
+				Type:    reporter.IssueTypeSyntax,
+				Message: "expected | got }",
+			}},
+		},
+	})
+
+	got := readSummary(t, path)
+
+	// The pipe should be escaped so it doesn't break the markdown table.
+	if !strings.Contains(got, `expected \| got }`) {
+		t.Errorf("pipe not escaped in summary:\n%s", got)
+	}
+	// The raw pipe should NOT appear unescaped in an error cell.
+	// (It will appear in the table delimiters |---|---| which is fine.)
+}

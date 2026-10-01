@@ -70,7 +70,9 @@ func WriteJobSummary(reports []reporter.Report) {
 			path := strings.TrimPrefix(failedReports[i].FilePath, "/github/workspace/")
 			var msgs []string
 			for _, issue := range failedReports[i].Issues {
-				msgs = append(msgs, issue.Message)
+				// Escape pipe characters that would break the markdown table.
+				msg := strings.ReplaceAll(issue.Message, "|", "\\|")
+				msgs = append(msgs, msg)
 			}
 			errors := strings.Join(msgs, "<br>")
 			_, _ = fmt.Fprintf(f, "| `%s` | %s |\n", path, errors)

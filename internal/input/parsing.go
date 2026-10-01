@@ -41,6 +41,8 @@ func ParseSchemaMap(input string) ([]cli.SchemaMapping, error) {
 	mappings := strings.Split(input, ",")
 	result := make([]cli.SchemaMapping, 0, len(mappings))
 	for _, mapping := range mappings {
+		// Note: the colon delimiter conflicts with Windows drive letters (C:\...).
+		// This is acceptable because the action runs on Linux/macOS runners.
 		parts := strings.SplitN(mapping, ":", 2)
 		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 			return nil, fmt.Errorf("invalid schema-map format %q", mapping)

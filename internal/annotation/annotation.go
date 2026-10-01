@@ -17,6 +17,8 @@ func StripWorkspacePrefix(path string) string {
 //   - "warn": format issues emit ::warning
 //   - "strict": format issues emit ::error
 //   - "off": format issues are skipped entirely
+//
+// TODO: accept io.Writer for testability instead of writing to os.Stdout directly.
 func EmitAnnotations(reports []reporter.Report, formatCheckMode string) {
 	for i := range reports {
 		if reports[i].Status == reporter.StatusPass {
