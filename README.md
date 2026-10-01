@@ -13,7 +13,7 @@ A GitHub Action that catches broken config files in your PRs before they cause p
 
 v3 also checks formatting out of the box — badly formatted files get `::warning` annotations so you can see them without failing the build. [SchemaStore](#schemastore) is now enabled by default, so common files like `package.json` and `tsconfig.json` get schema-validated automatically.
 
-XML files that declare an XSD via `xsi:noNamespaceSchemaLocation`, and YAML files with a `# yaml-language-server: $schema=...` modeline, are validated against those schemas automatically. For everything else, map files to a schema (JSON Schema or XSD) with [`schema-map`](#map-custom-schemas-to-files).
+XML files that declare an XSD via `xsi:noNamespaceSchemaLocation` are validated against it automatically. For everything else, map files to a schema (JSON Schema or XSD) with [`schema-map`](#map-custom-schemas-to-files).
 
 ## What's new in v3
 
