@@ -1,8 +1,6 @@
 package config
 
-import (
-	"os"
-)
+import "os"
 
 // Config holds all action inputs.
 type Config struct {
@@ -26,26 +24,36 @@ type Config struct {
 	OnlyChanged      string
 }
 
-// Load reads configuration from os.Args positional arguments.
+// Load reads configuration from environment variables.
+// GitHub Actions sets INPUT_<NAME> env vars from the action's inputs block.
 func Load() Config {
 	return Config{
-		SearchPaths:      os.Args[1],
-		ExcludeDirs:      os.Args[2],
-		ExcludeFileTypes: os.Args[3],
-		FileTypes:        os.Args[4],
-		Depth:            os.Args[5],
-		Reporter:         os.Args[6],
-		GroupBy:          os.Args[7],
-		Quiet:            os.Args[8],
-		Globbing:         os.Args[9],
-		RequireSchema:    os.Args[10],
-		NoSchema:         os.Args[11],
-		SchemaStore:      os.Args[12],
-		SchemaStorePath:  os.Args[13],
-		TypeMap:          os.Args[14],
-		SchemaMap:        os.Args[15],
-		Gitignore:        os.Args[16],
-		IgnoreFiles:      os.Args[17],
-		OnlyChanged:      os.Args[18],
+		SearchPaths:      envDefault("INPUT_SEARCH_PATHS", "."),
+		ExcludeDirs:      os.Getenv("INPUT_EXCLUDE_DIRS"),
+		ExcludeFileTypes: os.Getenv("INPUT_EXCLUDE_FILE_TYPES"),
+		FileTypes:        os.Getenv("INPUT_FILE_TYPES"),
+		Depth:            os.Getenv("INPUT_DEPTH"),
+		Reporter:         envDefault("INPUT_REPORTER", "standard"),
+		GroupBy:          os.Getenv("INPUT_GROUP_BY"),
+		Quiet:            envDefault("INPUT_QUIET", "false"),
+		Globbing:         envDefault("INPUT_GLOBBING", "false"),
+		RequireSchema:    envDefault("INPUT_REQUIRE_SCHEMA", "false"),
+		NoSchema:         envDefault("INPUT_NO_SCHEMA", "false"),
+		SchemaStore:      envDefault("INPUT_SCHEMASTORE", "false"),
+		SchemaStorePath:  os.Getenv("INPUT_SCHEMASTORE_PATH"),
+		TypeMap:          os.Getenv("INPUT_TYPE_MAP"),
+		SchemaMap:        os.Getenv("INPUT_SCHEMA_MAP"),
+		Gitignore:        envDefault("INPUT_GITIGNORE", "false"),
+		IgnoreFiles:      os.Getenv("INPUT_IGNORE_FILES"),
+		OnlyChanged:      envDefault("INPUT_ONLY_CHANGED", "false"),
 	}
+}
+
+// envDefault returns the value of the environment variable named by key,
+// or fallback if the variable is empty or unset.
+func envDefault(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }

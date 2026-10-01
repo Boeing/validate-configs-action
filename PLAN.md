@@ -927,15 +927,15 @@ Coverage baseline (1b): annotation 100%, config 100%, input 100%, reporter 100%,
 
 - [x] All 26 existing integration tests still pass (no behavioral changes) — binary smoke-tested: good files exit 0, bad files exit 1 with correct annotations, type-map works
 - [x] `just lint` passes
-- [ ] Commit: `refactor: split main.go into packages, add unit tests`
+- [x] Commit: `refactor: split main.go into packages, add unit tests` — af3560c
 
 #### 1c: Environment variable migration
-- [ ] Replace `os.Args[1..18]` parsing with `config` struct + `os.Getenv()` (per mapping table above)
-- [ ] Update `action.yaml`: replace `args:` block with `env:` block (still Docker for now)
-- [ ] Unit tests for `loadConfig()`: all env vars, defaults, empty values
-- [ ] All 26 existing integration tests still pass
-- [ ] `just lint` passes
-- [ ] Coverage must not drop from 1b baseline
+- [x] Replace `os.Args[1..18]` parsing with `config` struct + `os.Getenv()` (per mapping table above)
+- [x] Update `action.yaml`: replace `args:` block with `env:` block (still Docker for now)
+- [x] Unit tests for `loadConfig()`: all env vars, defaults, empty values
+- [x] All 26 existing integration tests still pass — binary smoke-tested with env vars: good files, bad files, json reporter, type-map all work
+- [x] `just lint` passes
+- [x] Coverage must not drop from 1b baseline — config still 100%
 - [ ] Commit: `refactor: switch from positional args to environment variables`
 
 #### 1d: Switch to composite action with pre-built binary

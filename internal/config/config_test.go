@@ -1,125 +1,145 @@
 package config
 
 import (
-	"os"
 	"testing"
 )
 
-func TestLoad_AllFieldsPopulated(t *testing.T) {
-	origArgs := os.Args
-	t.Cleanup(func() { os.Args = origArgs })
-
-	os.Args = []string{
-		"cmd",                // [0]  program name
-		"src docs",           // [1]  SearchPaths
-		"vendor,node_modules", // [2]  ExcludeDirs
-		"csv,xml",            // [3]  ExcludeFileTypes
-		"json,yaml",          // [4]  FileTypes
-		"5",                  // [5]  Depth
-		"standard",           // [6]  Reporter
-		"filetype",           // [7]  GroupBy
-		"true",               // [8]  Quiet
-		"false",              // [9]  Globbing
-		"true",               // [10] RequireSchema
-		"false",              // [11] NoSchema
-		"true",               // [12] SchemaStore
-		"/tmp/schemastore",   // [13] SchemaStorePath
-		"**/inv:ini",         // [14] TypeMap
-		"**/cfg:s.json",      // [15] SchemaMap
-		"true",               // [16] Gitignore
-		".dockerignore",      // [17] IgnoreFiles
-		"true",               // [18] OnlyChanged
-	}
+func TestLoad_AllFieldsFromEnv(t *testing.T) {
+	// Set all env vars.
+	t.Setenv("INPUT_SEARCH_PATHS", "src/ lib/")
+	t.Setenv("INPUT_EXCLUDE_DIRS", "vendor,node_modules")
+	t.Setenv("INPUT_EXCLUDE_FILE_TYPES", "csv,xml")
+	t.Setenv("INPUT_FILE_TYPES", "json,yaml")
+	t.Setenv("INPUT_DEPTH", "3")
+	t.Setenv("INPUT_REPORTER", "json")
+	t.Setenv("INPUT_GROUP_BY", "filetype")
+	t.Setenv("INPUT_QUIET", "true")
+	t.Setenv("INPUT_GLOBBING", "true")
+	t.Setenv("INPUT_REQUIRE_SCHEMA", "true")
+	t.Setenv("INPUT_NO_SCHEMA", "true")
+	t.Setenv("INPUT_SCHEMASTORE", "true")
+	t.Setenv("INPUT_SCHEMASTORE_PATH", "/path/to/store")
+	t.Setenv("INPUT_TYPE_MAP", "**/inv:ini")
+	t.Setenv("INPUT_SCHEMA_MAP", "**/pkg.json:schemas/pkg.json")
+	t.Setenv("INPUT_GITIGNORE", "true")
+	t.Setenv("INPUT_IGNORE_FILES", ".dockerignore")
+	t.Setenv("INPUT_ONLY_CHANGED", "true")
 
 	cfg := Load()
 
-	tests := []struct {
+	checks := []struct {
 		field string
 		got   string
 		want  string
 	}{
-		{"SearchPaths", cfg.SearchPaths, "src docs"},
+		{"SearchPaths", cfg.SearchPaths, "src/ lib/"},
 		{"ExcludeDirs", cfg.ExcludeDirs, "vendor,node_modules"},
 		{"ExcludeFileTypes", cfg.ExcludeFileTypes, "csv,xml"},
 		{"FileTypes", cfg.FileTypes, "json,yaml"},
-		{"Depth", cfg.Depth, "5"},
-		{"Reporter", cfg.Reporter, "standard"},
+		{"Depth", cfg.Depth, "3"},
+		{"Reporter", cfg.Reporter, "json"},
 		{"GroupBy", cfg.GroupBy, "filetype"},
 		{"Quiet", cfg.Quiet, "true"},
-		{"Globbing", cfg.Globbing, "false"},
+		{"Globbing", cfg.Globbing, "true"},
 		{"RequireSchema", cfg.RequireSchema, "true"},
-		{"NoSchema", cfg.NoSchema, "false"},
+		{"NoSchema", cfg.NoSchema, "true"},
 		{"SchemaStore", cfg.SchemaStore, "true"},
-		{"SchemaStorePath", cfg.SchemaStorePath, "/tmp/schemastore"},
+		{"SchemaStorePath", cfg.SchemaStorePath, "/path/to/store"},
 		{"TypeMap", cfg.TypeMap, "**/inv:ini"},
-		{"SchemaMap", cfg.SchemaMap, "**/cfg:s.json"},
+		{"SchemaMap", cfg.SchemaMap, "**/pkg.json:schemas/pkg.json"},
 		{"Gitignore", cfg.Gitignore, "true"},
 		{"IgnoreFiles", cfg.IgnoreFiles, ".dockerignore"},
 		{"OnlyChanged", cfg.OnlyChanged, "true"},
 	}
-
-	for _, tt := range tests {
-		if tt.got != tt.want {
-			t.Errorf("%s = %q, want %q", tt.field, tt.got, tt.want)
+	for _, c := range checks {
+		if c.got != c.want {
+			t.Errorf("%s = %q, want %q", c.field, c.got, c.want)
 		}
 	}
 }
 
-func TestLoad_EmptyStrings(t *testing.T) {
-	origArgs := os.Args
-	t.Cleanup(func() { os.Args = origArgs })
-
-	os.Args = []string{
-		"cmd", // [0] program name
-		"",    // [1]  SearchPaths
-		"",    // [2]  ExcludeDirs
-		"",    // [3]  ExcludeFileTypes
-		"",    // [4]  FileTypes
-		"",    // [5]  Depth
-		"",    // [6]  Reporter
-		"",    // [7]  GroupBy
-		"",    // [8]  Quiet
-		"",    // [9]  Globbing
-		"",    // [10] RequireSchema
-		"",    // [11] NoSchema
-		"",    // [12] SchemaStore
-		"",    // [13] SchemaStorePath
-		"",    // [14] TypeMap
-		"",    // [15] SchemaMap
-		"",    // [16] Gitignore
-		"",    // [17] IgnoreFiles
-		"",    // [18] OnlyChanged
+func TestLoad_Defaults(t *testing.T) {
+	// Clear all env vars — t.Setenv("", "") would set them to empty which
+	// triggers the fallback in envDefault. But env vars may be inherited from
+	// the parent process, so explicitly set them to empty.
+	for _, key := range []string{
+		"INPUT_SEARCH_PATHS", "INPUT_EXCLUDE_DIRS", "INPUT_EXCLUDE_FILE_TYPES",
+		"INPUT_FILE_TYPES", "INPUT_DEPTH", "INPUT_REPORTER", "INPUT_GROUP_BY",
+		"INPUT_QUIET", "INPUT_GLOBBING", "INPUT_REQUIRE_SCHEMA", "INPUT_NO_SCHEMA",
+		"INPUT_SCHEMASTORE", "INPUT_SCHEMASTORE_PATH", "INPUT_TYPE_MAP",
+		"INPUT_SCHEMA_MAP", "INPUT_GITIGNORE", "INPUT_IGNORE_FILES", "INPUT_ONLY_CHANGED",
+	} {
+		t.Setenv(key, "")
 	}
 
 	cfg := Load()
 
-	tests := []struct {
+	// Fields with defaults via envDefault.
+	defaults := []struct {
+		field string
+		got   string
+		want  string
+	}{
+		{"SearchPaths", cfg.SearchPaths, "."},
+		{"Reporter", cfg.Reporter, "standard"},
+		{"Quiet", cfg.Quiet, "false"},
+		{"Globbing", cfg.Globbing, "false"},
+		{"RequireSchema", cfg.RequireSchema, "false"},
+		{"NoSchema", cfg.NoSchema, "false"},
+		{"SchemaStore", cfg.SchemaStore, "false"},
+		{"Gitignore", cfg.Gitignore, "false"},
+		{"OnlyChanged", cfg.OnlyChanged, "false"},
+	}
+	for _, c := range defaults {
+		if c.got != c.want {
+			t.Errorf("%s = %q, want default %q", c.field, c.got, c.want)
+		}
+	}
+
+	// Fields without defaults — should be empty.
+	empties := []struct {
 		field string
 		got   string
 	}{
-		{"SearchPaths", cfg.SearchPaths},
 		{"ExcludeDirs", cfg.ExcludeDirs},
 		{"ExcludeFileTypes", cfg.ExcludeFileTypes},
 		{"FileTypes", cfg.FileTypes},
 		{"Depth", cfg.Depth},
-		{"Reporter", cfg.Reporter},
 		{"GroupBy", cfg.GroupBy},
-		{"Quiet", cfg.Quiet},
-		{"Globbing", cfg.Globbing},
-		{"RequireSchema", cfg.RequireSchema},
-		{"NoSchema", cfg.NoSchema},
-		{"SchemaStore", cfg.SchemaStore},
 		{"SchemaStorePath", cfg.SchemaStorePath},
 		{"TypeMap", cfg.TypeMap},
 		{"SchemaMap", cfg.SchemaMap},
-		{"Gitignore", cfg.Gitignore},
 		{"IgnoreFiles", cfg.IgnoreFiles},
-		{"OnlyChanged", cfg.OnlyChanged},
 	}
-
-	for _, tt := range tests {
-		if tt.got != "" {
-			t.Errorf("%s = %q, want empty string", tt.field, tt.got)
+	for _, c := range empties {
+		if c.got != "" {
+			t.Errorf("%s = %q, want empty string", c.field, c.got)
 		}
 	}
+}
+
+func TestEnvDefault(t *testing.T) {
+	t.Run("returns env value when set", func(t *testing.T) {
+		t.Setenv("TEST_ENV_DEFAULT_KEY", "custom-value")
+		got := envDefault("TEST_ENV_DEFAULT_KEY", "fallback")
+		if got != "custom-value" {
+			t.Errorf("envDefault = %q, want %q", got, "custom-value")
+		}
+	})
+
+	t.Run("returns fallback when empty", func(t *testing.T) {
+		t.Setenv("TEST_ENV_DEFAULT_KEY", "")
+		got := envDefault("TEST_ENV_DEFAULT_KEY", "fallback")
+		if got != "fallback" {
+			t.Errorf("envDefault = %q, want %q", got, "fallback")
+		}
+	})
+
+	t.Run("returns fallback when unset", func(t *testing.T) {
+		// Don't set the env var at all — rely on it not existing.
+		got := envDefault("TEST_ENV_DEFAULT_NONEXISTENT_KEY_12345", "fallback")
+		if got != "fallback" {
+			t.Errorf("envDefault = %q, want %q", got, "fallback")
+		}
+	})
 }
