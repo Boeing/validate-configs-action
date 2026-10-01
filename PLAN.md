@@ -1021,7 +1021,178 @@ Wire format checking through the cfv v3 API.
 - [x] Integration tests: smoke-tested locally — warn/strict/off/invalid all work correctly
 - [x] `just lint` passes
 - [x] Coverage: exitcode 100%, annotation 97.5%, output 94.4%, summary 98.1%, config 100%, input 100%, reporter 100%. Format options 0% (integration code loading real config files — functional test territory).
-- [ ] Commit: `feat: format checking with PR annotations`
+- [x] Commit: `feat: format checking with PR annotations` — 155e2d5
+
+### Phase 3.5: Code Review Remediation
+
+Address ALL findings from the contextless subagent code review.
+
+#### Fix 1 (CRITICAL): Dockerfile missing `COPY internal/`
+
+**File:** `Dockerfile`
+**Problem:** Build stage copies `cmd/` but not `internal/`. Since Phase 1b split main.go into internal packages, the Dockerfile build has been broken.
+**Fix:** Add `COPY internal/ internal/` after `COPY cmd/ cmd/`.
+**Test:** `docker build -t test-cfv .` must succeed. Run `docker run --rm test-cfv` (no args = env var mode, will use defaults and scan `.` inside the container).
+
+#### Fix 2 (HIGH): `GetChangedFiles` writes to global git config
+
+**File:** `internal/filter/changed.go`, line 55
+**Problem:** `git config --global --add safe.directory /github/workspace` permanently pollutes `~/.gitconfig` when run locally.
+**Fix:** Guard behind `GITHUB_ACTIONS` env var check. Only run the safe.directory command when `os.Getenv("GITHUB_ACTIONS") == "true"`. This env var is always set on GitHub-hosted runners.
+**Test:** Unit test `GetChangedFiles` is not called in unit tests (functional test territory). Binary smoke test: run locally, verify `~/.gitconfig` is NOT modified. The test workflow (CI) still works because `GITHUB_ACTIONS=true` there.
+
+#### Fix 3 (HIGH): Hardcoded `ACTION_VERSION` in action.yaml
+
+**File:** `action.yaml`, line ~73
+**Problem:** `ACTION_VERSION="v3.0.0"` is hardcoded. Comment says "Updated by release process" but nothing automates this.
+**Fix:** Use `${{ github.action_ref }}` at runtime instead of a hardcoded string. GitHub sets `github.action_ref` to the ref used to invoke the action (e.g., `v3`, `v3.0.0`, `main`). This self-resolves for consumers using `@v3` or `@v3.0.0`. For our CI (using `./`), the local binary path is used so the version string is never reached.
+**Specific change:** Replace `ACTION_VERSION="v3.0.0"  # Updated by release process` with `ACTION_VERSION="${{ github.ref_name }}"` in the action.yaml shell script. Wait — `github.ref_name` won't work in composite actions for consumers. The correct approach: since consumers use `@v3` or `@v3.0.0`, and the action is checked out at that ref, we can read the version from the action's own context. Actually, the simplest correct fix: derive from `github.action_ref` which IS available in composite action steps. Change to: `ACTION_VERSION="${GITHUB_ACTION_REF:-v3.0.0}"`. The `GITHUB_ACTION_REF` env var is automatically set by the runner to the ref that resolved the action (e.g., `v3.0.0`, `v3`). Fallback to `v3.0.0` for safety.
+**Test:** Verify `GITHUB_ACTION_REF` is documented in GitHub Actions docs. The local binary path (CI) never reaches this code so no regression risk there.
+
+#### Fix 4 (MEDIUM): Silent error swallowing in `WriteOutputs`
+
+**File:** `internal/output/output.go`, line 30
+**Problem:** `os.OpenFile` failure is silently ignored — user gets no outputs.
+**Fix:** Add `fmt.Fprintf(os.Stderr, "Warning: could not write to GITHUB_OUTPUT: %v\n", err)` before the `return`.
+**Test:** Existing test `TestWriteOutputs_GithubOutputNotSet` covers the empty-env-var path. Add a new test: set `GITHUB_OUTPUT` to a non-existent directory path (e.g., `/nonexistent/dir/output`), call `WriteOutputs`, capture stderr, assert the warning is printed. Use `os.Pipe()` to capture stderr.
+
+#### Fix 5 (MEDIUM): Silent error swallowing in `WriteJobSummary`
+
+**File:** `internal/summary/summary.go`, line 39
+**Problem:** Same as Fix 4 — `os.OpenFile` failure is silently ignored.
+**Fix:** Add `fmt.Fprintf(os.Stderr, "Warning: could not write to GITHUB_STEP_SUMMARY: %v\n", err)` before the `return`.
+**Test:** Same pattern as Fix 4. Add test with bad path, capture stderr, assert warning printed.
+
+#### Fix 6 (MEDIUM): `EscapeAnnotation` doesn't escape `%`
+
+**File:** `internal/annotation/escape.go`
+**Problem:** GitHub Actions uses `%` as escape prefix (`%0A`, `%0D`, `%25`). A literal `%0A` in a message would be misinterpreted as a newline. Must escape `%` → `%25` FIRST, then `\n` → `%0A` and `\r` → `%0D`.
+**Fix:** Add `s = strings.ReplaceAll(s, "%", "%25")` as the FIRST line. Order matters: `%` must be escaped before `\n`/`\r` so the `%0A` and `%0D` replacements don't get double-escaped.
+**Test:** Update `TestEscapeAnnotation`:
+  - Add case: `"has %0A literal"` → `"has %250A literal"`
+  - Add case: `"%"` → `"%25"`
+  - Add case: `"100% done"` → `"100%25 done"`
+  - Verify existing cases still pass (e.g., `"\n"` → `"%0A"` — the `%` in `%0A` was inserted by us, not in the original, so it should NOT be double-escaped... wait. If we escape `%` first: `"\n"` input has no `%` so step 1 is a no-op, then step 2 produces `"%0A"`. Correct. If input is `"50%\n"`: step 1 → `"50%25\n"`, step 2 → `"50%25%0A"`. Correct.)
+
+#### Fix 7 (MEDIUM): `ExpandGlobs` hardwired to `os.DirFS(".")`
+
+**File:** `internal/input/parsing.go`, line 64
+**Problem:** Coupled to cwd. Test uses `os.Chdir()` which is fragile in parallel tests.
+**Fix:** Change `ExpandGlobs` signature to `ExpandGlobs(patterns []string, fsys fs.FS) ([]string, error)`. Pass `os.DirFS(".")` from the caller in `runner.go`. Tests can pass `os.DirFS(tmpDir)` without `Chdir`.
+**Affected callers:** `internal/runner/runner.go` line ~72 — add `os.DirFS(".")` argument.
+**Test:** Update `parsing_test.go`: remove the `Chdir` hack, pass `os.DirFS(dir)` directly.
+
+#### Fix 8 (MEDIUM): Config fields are all strings with "true"/"false" comparisons
+
+**File:** `internal/config/config.go`, `internal/runner/runner.go`
+**Problem:** 8 boolean fields stored as strings, compared with `== "true"` in 10+ places. Typos like `"True"` or `"yes"` silently fail.
+**Fix:** Change boolean fields to `bool` in `Config` struct. Parse in `Load()`:
+```go
+Quiet:         envDefault("INPUT_QUIET", "false") == "true",
+Globbing:      envDefault("INPUT_GLOBBING", "false") == "true",
+RequireSchema: envDefault("INPUT_REQUIRE_SCHEMA", "false") == "true",
+NoSchema:      envDefault("INPUT_NO_SCHEMA", "false") == "true",
+SchemaStore:   envDefault("INPUT_SCHEMASTORE", "true") == "true",
+Gitignore:     envDefault("INPUT_GITIGNORE", "false") == "true",
+OnlyChanged:   envDefault("INPUT_ONLY_CHANGED", "false") == "true",
+NoConfig:      envDefault("INPUT_NO_CONFIG", "false") == "true",
+```
+**Affected files:** `config.go` (struct + Load), `config_test.go` (assert bool values), `runner.go` (change all `cfg.X == "true"` to `cfg.X`).
+**Test:** Update `config_test.go` to assert `bool` values. Update `runner.go` to use `if cfg.Quiet {` instead of `if cfg.Quiet == "true" {`.
+
+#### Fix 9 (LOW): Invalid `depth` silently ignored
+
+**File:** `internal/runner/runner.go`, line 120
+**Problem:** `strconv.Atoi` error is silently discarded. User passes `depth: "abc"` and gets no error.
+**Fix:** Return exit code 2 with error message:
+```go
+if cfg.Depth != "" {
+    d, err := strconv.Atoi(cfg.Depth)
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error: invalid depth value %q\n", cfg.Depth)
+        return 2
+    }
+    fsOpts = append(fsOpts, finder.WithDepth(d))
+}
+```
+**Test:** Binary smoke test: `INPUT_DEPTH="abc" INPUT_SEARCH_PATHS=test/good.json ./bin/entrypoint` must return exit code 2 with error on stderr.
+
+#### Fix 10 (LOW): `FormatBody` is exported but unused
+
+**File:** `internal/annotation/annotation.go`
+**Problem:** `FormatBody` was used by v2's coalescing logic. v3 removed coalescing. It's dead code.
+**Fix:** Delete `FormatBody`. Remove its tests from `annotation_test.go`.
+**Test:** `go build ./...` compiles. No callers remain (verified by grep).
+
+#### Fix 11 (LOW): `CaptureReporter` is not thread-safe
+
+**File:** `internal/reporter/capture.go`
+**Problem:** `Print` appends to a slice with no synchronization. If cfv ever calls reporters concurrently, this is a data race.
+**Fix:** Add a `sync.Mutex`:
+```go
+type CaptureReporter struct {
+    mu      sync.Mutex
+    Reports []cfvreporter.Report
+}
+
+func (c *CaptureReporter) Print(reports []cfvreporter.Report) error {
+    c.mu.Lock()
+    defer c.mu.Unlock()
+    c.Reports = append(c.Reports, reports...)
+    return nil
+}
+```
+**Test:** Existing tests pass (single-threaded Print still works). Add a concurrent test: 10 goroutines each calling `Print` with 100 reports, verify total is 1000 after `sync.WaitGroup.Wait()`. Run with `-race`.
+
+#### Fix 12 (LOW): `ComputeExitCode` edge case comment
+
+**File:** `internal/format/exitcode.go`
+**Problem:** When cfv returns 1 but no `StatusFail` reports exist and mode is `"warn"`, we return 0. This is intentional but could mask a cfv bug.
+**Fix:** Add a comment before the loop explaining the design choice:
+```go
+// In warn mode, if cfv returned 1 but no reports have StatusFail, the error
+// was caused solely by format issues. We downgrade to 0 because warn mode
+// treats format issues as non-blocking. This also covers edge cases where
+// cfv returns 1 with an empty or all-pass report set — we trust that if
+// there's no StatusFail, there's no real error to surface.
+```
+**Test:** No code change — comment only.
+
+#### Fix 13 (NIT): `classifyIssue` default case — no action needed
+
+Acknowledged. The default case returns "Validation Error" for unknown `IssueType` values. This is the correct safety fallback. No change needed.
+
+#### Fix 14 (NIT): Inconsistent `nolint` comment style — no action needed
+
+Stylistic. Not worth the churn. No change needed.
+
+#### Execution order
+
+The fixes are mostly independent but Fix 8 (bool config) touches the most files. Do it last to minimize merge conflicts.
+
+1. Fix 1: Dockerfile (independent, 1 line)
+2. Fix 10: Delete FormatBody (independent, removes code)
+3. Fix 6: EscapeAnnotation (independent, escape.go + tests)
+4. Fix 12: ComputeExitCode comment (independent, comment only)
+5. Fix 11: CaptureReporter mutex (independent, capture.go + tests)
+6. Fix 2: GetChangedFiles git config guard (independent, changed.go)
+7. Fix 3: ACTION_VERSION dynamic (independent, action.yaml)
+8. Fix 4 + 5: Silent error swallowing (output.go + summary.go + tests)
+9. Fix 9: Depth validation (runner.go, small)
+10. Fix 7: ExpandGlobs fs.FS parameter (parsing.go + runner.go + tests)
+11. Fix 8: Bool config fields (config.go + config_test.go + runner.go — largest change, do last)
+
+All fixes in a single commit: `fix: address code review findings`
+
+#### Verification
+
+After ALL fixes:
+- [ ] `just build` succeeds
+- [ ] `just lint` passes
+- [ ] `just test` passes with `-race`
+- [ ] `docker build -t test-cfv .` succeeds
+- [ ] Coverage must not drop on any package that had coverage before
+- [ ] Binary smoke tests: good file (exit 0), bad file (exit 1), format warn (::warning, exit 0), format strict (::error, exit 1), format off (exit 0), invalid format-check (exit 2), invalid depth (exit 2)
 
 ### Phase 4: Documentation + release
 
