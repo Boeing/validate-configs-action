@@ -42,24 +42,36 @@ func TestLoad_AllFieldsFromEnv(t *testing.T) {
 		{"Depth", cfg.Depth, "3"},
 		{"Reporter", cfg.Reporter, "json"},
 		{"GroupBy", cfg.GroupBy, "filetype"},
-		{"Quiet", cfg.Quiet, "true"},
-		{"Globbing", cfg.Globbing, "true"},
-		{"RequireSchema", cfg.RequireSchema, "true"},
-		{"NoSchema", cfg.NoSchema, "true"},
-		{"SchemaStore", cfg.SchemaStore, "true"},
 		{"SchemaStorePath", cfg.SchemaStorePath, "/path/to/store"},
 		{"TypeMap", cfg.TypeMap, "**/inv:ini"},
 		{"SchemaMap", cfg.SchemaMap, "**/pkg.json:schemas/pkg.json"},
-		{"Gitignore", cfg.Gitignore, "true"},
 		{"IgnoreFiles", cfg.IgnoreFiles, ".dockerignore"},
-		{"OnlyChanged", cfg.OnlyChanged, "true"},
 		{"FormatCheck", cfg.FormatCheck, "error"},
-		{"NoConfig", cfg.NoConfig, "true"},
 		{"ConfigPath", cfg.ConfigPath, "/path/to/config.yaml"},
 	}
 	for _, c := range checks {
 		if c.got != c.want {
 			t.Errorf("%s = %q, want %q", c.field, c.got, c.want)
+		}
+	}
+
+	boolChecks := []struct {
+		field string
+		got   bool
+		want  bool
+	}{
+		{"Quiet", cfg.Quiet, true},
+		{"Globbing", cfg.Globbing, true},
+		{"RequireSchema", cfg.RequireSchema, true},
+		{"NoSchema", cfg.NoSchema, true},
+		{"SchemaStore", cfg.SchemaStore, true},
+		{"Gitignore", cfg.Gitignore, true},
+		{"OnlyChanged", cfg.OnlyChanged, true},
+		{"NoConfig", cfg.NoConfig, true},
+	}
+	for _, c := range boolChecks {
+		if c.got != c.want {
+			t.Errorf("%s = %v, want %v", c.field, c.got, c.want)
 		}
 	}
 }
@@ -89,19 +101,32 @@ func TestLoad_Defaults(t *testing.T) {
 	}{
 		{"SearchPaths", cfg.SearchPaths, "."},
 		{"Reporter", cfg.Reporter, "standard"},
-		{"Quiet", cfg.Quiet, "false"},
-		{"Globbing", cfg.Globbing, "false"},
-		{"RequireSchema", cfg.RequireSchema, "false"},
-		{"NoSchema", cfg.NoSchema, "false"},
-		{"SchemaStore", cfg.SchemaStore, "true"},
-		{"Gitignore", cfg.Gitignore, "false"},
-		{"OnlyChanged", cfg.OnlyChanged, "false"},
 		{"FormatCheck", cfg.FormatCheck, "warn"},
-		{"NoConfig", cfg.NoConfig, "false"},
 	}
 	for _, c := range defaults {
 		if c.got != c.want {
 			t.Errorf("%s = %q, want default %q", c.field, c.got, c.want)
+		}
+	}
+
+	// Bool fields with defaults.
+	boolDefaults := []struct {
+		field string
+		got   bool
+		want  bool
+	}{
+		{"Quiet", cfg.Quiet, false},
+		{"Globbing", cfg.Globbing, false},
+		{"RequireSchema", cfg.RequireSchema, false},
+		{"NoSchema", cfg.NoSchema, false},
+		{"SchemaStore", cfg.SchemaStore, true},
+		{"Gitignore", cfg.Gitignore, false},
+		{"OnlyChanged", cfg.OnlyChanged, false},
+		{"NoConfig", cfg.NoConfig, false},
+	}
+	for _, c := range boolDefaults {
+		if c.got != c.want {
+			t.Errorf("%s = %v, want default %v", c.field, c.got, c.want)
 		}
 	}
 

@@ -36,6 +36,7 @@ func WriteJobSummary(reports []reporter.Report) {
 
 	f, err := os.OpenFile(summaryFile, os.O_APPEND|os.O_WRONLY, 0o644) //nolint:gosec // GITHUB_STEP_SUMMARY is a trusted path set by the GitHub runner
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not write to GITHUB_STEP_SUMMARY: %v\n", err)
 		return
 	}
 	defer f.Close() //nolint:errcheck // best-effort file close

@@ -127,7 +127,7 @@ runs:
         fi
 
         # Path 2: Download pre-built binary from GitHub Release (consumer path)
-        ACTION_VERSION="v3.0.0"  # Updated by release process
+        ACTION_VERSION="${GITHUB_ACTION_REF:-v3.0.0}"
         ACTION_REPO="Boeing/validate-configs-action"
         RELEASE_URL="https://github.com/${ACTION_REPO}/releases/download/${ACTION_VERSION}"
         BINARY_PATH="${{ runner.temp }}/cfv-action"

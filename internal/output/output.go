@@ -29,6 +29,7 @@ func WriteOutputs(reports []reporter.Report, exitCode int) {
 
 	f, err := os.OpenFile(outputFile, os.O_APPEND|os.O_WRONLY, 0o644) //nolint:gosec // GITHUB_OUTPUT is a trusted path set by the GitHub runner
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not write to GITHUB_OUTPUT: %v\n", err)
 		return
 	}
 	defer f.Close() //nolint:errcheck // best-effort file close

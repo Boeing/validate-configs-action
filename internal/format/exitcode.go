@@ -21,7 +21,13 @@ func ComputeExitCode(cfvExitCode int, reports []reporter.Report, formatCheckMode
 		return 0
 	}
 
-	// cfv returned 1 (error found). Check if it's ONLY format issues.
+	// cfv returned 1 (error found). In warn mode, if no reports have StatusFail,
+	// the error was caused solely by format issues. We downgrade to 0 because
+	// warn mode treats format issues as non-blocking warnings.
+	//
+	// This also covers edge cases where cfv returns 1 with an empty or all-pass
+	// report set — we trust that if there's no StatusFail, there's no real
+	// error to surface.
 	if formatCheckMode == "warn" {
 		for i := range reports {
 			if reports[i].Status == reporter.StatusFail {

@@ -198,7 +198,7 @@ func TestParseSchemaMap(t *testing.T) {
 
 func TestExpandGlobs(t *testing.T) {
 	t.Run("non-glob passes through", func(t *testing.T) {
-		got, err := ExpandGlobs([]string{"plain/path", "another"})
+		got, err := ExpandGlobs(os.DirFS("."), []string{"plain/path", "another"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -223,21 +223,7 @@ func TestExpandGlobs(t *testing.T) {
 			}
 		}
 
-		// ExpandGlobs uses os.DirFS(".") so we need to chdir.
-		origDir, err := os.Getwd()
-		if err != nil {
-			t.Fatalf("Getwd: %v", err)
-		}
-		t.Cleanup(func() {
-			if err := os.Chdir(origDir); err != nil {
-				t.Fatalf("Chdir restore: %v", err)
-			}
-		})
-		if err := os.Chdir(dir); err != nil {
-			t.Fatalf("Chdir: %v", err)
-		}
-
-		got, err := ExpandGlobs([]string{"*.json"})
+		got, err := ExpandGlobs(os.DirFS(dir), []string{"*.json"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -254,7 +240,7 @@ func TestExpandGlobs(t *testing.T) {
 	})
 
 	t.Run("invalid glob returns error", func(t *testing.T) {
-		_, err := ExpandGlobs([]string{"[invalid"})
+		_, err := ExpandGlobs(os.DirFS("."), []string{"[invalid"})
 		if err == nil {
 			t.Fatal("expected error for invalid glob, got nil")
 		}

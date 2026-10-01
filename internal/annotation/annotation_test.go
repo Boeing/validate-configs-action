@@ -40,6 +40,10 @@ func TestEscapeAnnotation(t *testing.T) {
 		{name: "multiple_newlines", in: "a\nb\nc", want: "a%0Ab%0Ac"},
 		{name: "only_newline", in: "\n", want: "%0A"},
 		{name: "only_cr", in: "\r", want: "%0D"},
+		{name: "percent_escaped_first", in: "100% done", want: "100%25 done"},
+		{name: "literal_percent_0A", in: "has %0A literal", want: "has %250A literal"},
+		{name: "only_percent", in: "%", want: "%25"},
+		{name: "percent_and_newline", in: "50%\n", want: "50%25%0A"},
 	}
 
 	for _, tt := range tests {
@@ -53,53 +57,6 @@ func TestEscapeAnnotation(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// FormatBody
-// ---------------------------------------------------------------------------
-
-func TestFormatBody(t *testing.T) {
-	tests := []struct {
-		name  string
-		title string
-		msgs  []string
-		want  string
-	}{
-		{
-			name:  "single_message",
-			title: "Syntax Error",
-			msgs:  []string{"unexpected '}'"},
-			want:  "unexpected '}'",
-		},
-		{
-			name:  "two_messages",
-			title: "Syntax Error",
-			msgs:  []string{"bad token", "missing comma"},
-			want:  "2 syntax errors found:\n• bad token\n• missing comma",
-		},
-		{
-			name:  "three_schema_errors",
-			title: "Schema Error",
-			msgs:  []string{"a", "b", "c"},
-			want:  "3 schema errors found:\n• a\n• b\n• c",
-		},
-		{
-			name:  "validation_error_title",
-			title: "Validation Error",
-			msgs:  []string{"err1", "err2"},
-			want:  "2 validation errors found:\n• err1\n• err2",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := FormatBody(tt.title, tt.msgs)
-			if got != tt.want {
-				t.Errorf("FormatBody(%q, %v) =\n  %q\nwant\n  %q",
-					tt.title, tt.msgs, got, tt.want)
-			}
-		})
-	}
-}
-
 // ---------------------------------------------------------------------------
 // StripWorkspacePrefix
 // ---------------------------------------------------------------------------

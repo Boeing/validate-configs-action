@@ -36,10 +36,9 @@ func Run(cfg *config.Config) int {
 	}
 
 	// Discover/load .cfv.toml config file.
-	noConfig := cfg.NoConfig == "true"
 	var cfvCfg *configfile.Config
 	var cfvCfgPath string
-	if !noConfig {
+	if !cfg.NoConfig {
 		if cfg.ConfigPath != "" {
 			cfvCfgPath = cfg.ConfigPath
 		} else {
@@ -62,8 +61,8 @@ func Run(cfg *config.Config) int {
 	if cfg.SearchPaths != "" {
 		paths = strings.Fields(cfg.SearchPaths)
 	}
-	if cfg.Globbing == "true" {
-		expanded, err := input.ExpandGlobs(paths)
+	if cfg.Globbing {
+		expanded, err := input.ExpandGlobs(os.DirFS("."), paths)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error expanding globs: %v\n", err)
 			return 2
@@ -98,9 +97,11 @@ func Run(cfg *config.Config) int {
 
 	if cfg.Depth != "" {
 		d, err := strconv.Atoi(cfg.Depth)
-		if err == nil {
-			fsOpts = append(fsOpts, finder.WithDepth(d))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: invalid depth value %q\n", cfg.Depth)
+			return 2
 		}
+		fsOpts = append(fsOpts, finder.WithDepth(d))
 	}
 
 	if cfg.TypeMap != "" {
@@ -112,7 +113,7 @@ func Run(cfg *config.Config) int {
 		fsOpts = append(fsOpts, finder.WithTypeOverrides(overrides))
 	}
 
-	if cfg.Gitignore == "true" {
+	if cfg.Gitignore {
 		fsOpts = append(fsOpts, finder.WithGitignore(true))
 	}
 
@@ -127,7 +128,7 @@ func Run(cfg *config.Config) int {
 	fileFinder = finder.FileSystemFinderInit(fsOpts...)
 
 	// Filter to only changed files if requested
-	if cfg.OnlyChanged == "true" {
+	if cfg.OnlyChanged {
 		changed, err := filter.GetChangedFiles()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not determine changed files: %v\n", err)
@@ -138,13 +139,13 @@ func Run(cfg *config.Config) int {
 
 	cliOpts = append(cliOpts, cli.WithFinder(fileFinder))
 
-	if cfg.Quiet == "true" {
+	if cfg.Quiet {
 		cliOpts = append(cliOpts, cli.WithQuiet(true))
 	}
-	if cfg.RequireSchema == "true" {
+	if cfg.RequireSchema {
 		cliOpts = append(cliOpts, cli.WithRequireSchema(true))
 	}
-	if cfg.NoSchema == "true" {
+	if cfg.NoSchema {
 		cliOpts = append(cliOpts, cli.WithNoSchema(true))
 	}
 	if cfg.GroupBy != "" {
@@ -165,7 +166,7 @@ func Run(cfg *config.Config) int {
 			return 2
 		}
 		cliOpts = append(cliOpts, cli.WithSchemaStore(store))
-	} else if cfg.SchemaStore == "true" {
+	} else if cfg.SchemaStore {
 		store, err := schemastore.OpenEmbedded()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error opening embedded schemastore: %v\n", err)
@@ -181,7 +182,7 @@ func Run(cfg *config.Config) int {
 
 	// Wire format checking (warn/strict enable it, off skips it).
 	if formatCheckMode != "off" {
-		optsFunc, formatIgnores := intformat.BuildFormatOptionsFunc(cfvCfg, noConfig)
+		optsFunc, formatIgnores := intformat.BuildFormatOptionsFunc(cfvCfg, cfg.NoConfig)
 		cliOpts = append(cliOpts, cli.WithFormatOptions(optsFunc))
 		if formatIgnores != nil {
 			cliOpts = append(cliOpts, cli.WithFormatIgnores(formatIgnores))

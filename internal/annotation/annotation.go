@@ -65,18 +65,6 @@ func EmitNotes(reports []reporter.Report) {
 	}
 }
 
-// FormatBody formats one or more messages into an annotation body.
-func FormatBody(title string, msgs []string) string {
-	if len(msgs) == 1 {
-		return msgs[0]
-	}
-	lines := []string{fmt.Sprintf("%d %ss found:", len(msgs), strings.ToLower(title))}
-	for _, m := range msgs {
-		lines = append(lines, "\u2022 "+m)
-	}
-	return strings.Join(lines, "\n")
-}
-
 // classifyIssue maps a v3 IssueType to a human-readable annotation title.
 func classifyIssue(t reporter.IssueType) string {
 	switch t {

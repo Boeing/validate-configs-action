@@ -2,7 +2,7 @@ package input
 
 import (
 	"fmt"
-	"os"
+	"io/fs"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -51,11 +51,11 @@ func ParseSchemaMap(input string) ([]cli.SchemaMapping, error) {
 }
 
 // ExpandGlobs expands glob patterns in the given paths using doublestar.
-func ExpandGlobs(patterns []string) ([]string, error) {
+func ExpandGlobs(fsys fs.FS, patterns []string) ([]string, error) {
 	var result []string
 	for _, p := range patterns {
 		if strings.ContainsAny(p, "*?[]") {
-			matches, err := doublestar.Glob(os.DirFS("."), p)
+			matches, err := doublestar.Glob(fsys, p)
 			if err != nil {
 				return nil, fmt.Errorf("glob error for %q: %w", p, err)
 			}

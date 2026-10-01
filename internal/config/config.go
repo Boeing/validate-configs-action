@@ -11,19 +11,19 @@ type Config struct {
 	Depth            string
 	Reporter         string
 	GroupBy          string
-	Quiet            string
-	Globbing         string
-	RequireSchema    string
-	NoSchema         string
-	SchemaStore      string
+	Quiet            bool
+	Globbing         bool
+	RequireSchema    bool
+	NoSchema         bool
+	SchemaStore      bool
 	SchemaStorePath  string
 	TypeMap          string
 	SchemaMap        string
-	Gitignore        string
+	Gitignore        bool
 	IgnoreFiles      string
-	OnlyChanged      string
+	OnlyChanged      bool
 	FormatCheck      string
-	NoConfig         string
+	NoConfig         bool
 	ConfigPath       string
 }
 
@@ -38,19 +38,19 @@ func Load() Config {
 		Depth:            os.Getenv("INPUT_DEPTH"),
 		Reporter:         envDefault("INPUT_REPORTER", "standard"),
 		GroupBy:          os.Getenv("INPUT_GROUP_BY"),
-		Quiet:            envDefault("INPUT_QUIET", "false"),
-		Globbing:         envDefault("INPUT_GLOBBING", "false"),
-		RequireSchema:    envDefault("INPUT_REQUIRE_SCHEMA", "false"),
-		NoSchema:         envDefault("INPUT_NO_SCHEMA", "false"),
-		SchemaStore:      envDefault("INPUT_SCHEMASTORE", "true"),
+		Quiet:            envDefault("INPUT_QUIET", "false") == "true",
+		Globbing:         envDefault("INPUT_GLOBBING", "false") == "true",
+		RequireSchema:    envDefault("INPUT_REQUIRE_SCHEMA", "false") == "true",
+		NoSchema:         envDefault("INPUT_NO_SCHEMA", "false") == "true",
+		SchemaStore:      envDefault("INPUT_SCHEMASTORE", "true") == "true",
 		SchemaStorePath:  os.Getenv("INPUT_SCHEMASTORE_PATH"),
 		TypeMap:          os.Getenv("INPUT_TYPE_MAP"),
 		SchemaMap:        os.Getenv("INPUT_SCHEMA_MAP"),
-		Gitignore:        envDefault("INPUT_GITIGNORE", "false"),
+		Gitignore:        envDefault("INPUT_GITIGNORE", "false") == "true",
 		IgnoreFiles:      os.Getenv("INPUT_IGNORE_FILES"),
-		OnlyChanged:      envDefault("INPUT_ONLY_CHANGED", "false"),
+		OnlyChanged:      envDefault("INPUT_ONLY_CHANGED", "false") == "true",
 		FormatCheck:      envDefault("INPUT_FORMAT_CHECK", "warn"),
-		NoConfig:         envDefault("INPUT_NO_CONFIG", "false"),
+		NoConfig:         envDefault("INPUT_NO_CONFIG", "false") == "true",
 		ConfigPath:       os.Getenv("INPUT_CONFIG"),
 	}
 }

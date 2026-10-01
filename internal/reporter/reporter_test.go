@@ -2,6 +2,7 @@ package reporter
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 
 	cfvreporter "github.com/Boeing/config-file-validator/v3/pkg/reporter"
@@ -232,5 +233,27 @@ func TestBuildReporters(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestCaptureReporter_Print_ConcurrentSafe(t *testing.T) {
+	c := &CaptureReporter{}
+	var wg sync.WaitGroup
+	const goroutines = 10
+	const reportsPerGoroutine = 100
+
+	for g := 0; g < goroutines; g++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < reportsPerGoroutine; i++ {
+				_ = c.Print([]cfvreporter.Report{{FilePath: "test.json", Status: cfvreporter.StatusPass}})
+			}
+		}()
+	}
+	wg.Wait()
+
+	if len(c.Reports) != goroutines*reportsPerGoroutine {
+		t.Errorf("expected %d reports, got %d", goroutines*reportsPerGoroutine, len(c.Reports))
 	}
 }
